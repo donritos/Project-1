@@ -444,17 +444,40 @@ def test_auto_clear_threshold_is_inclusive(cfg):
     row = _triage(cfg, **_probs(T_CLEAR, 0.05))
     assert row["triage_action"] == TA.AUTO_CLEAR_CANDIDATE.value
     row = _triage(cfg, **_probs(T_CLEAR - 1e-6, 0.05))
-    assert row["triage_action"] == TA.HUMAN_REVIEW.value
+    assert row["triage_action"] == TA.LOW_PRIORITY_MONITOR.value
     assert RC.LOW_CONFIDENCE_SAFE.value in row["reason_codes"]
     assert RC.FORECAST_SAFE.value in row["reason_codes"]
 
 
 def test_low_confidence_safe_blocks_auto_clear(cfg):
+    # Predicted Safe below the auto-clear bar, otherwise clean -> Low-priority monitor, never auto-clear.
     row = _triage(cfg, **_probs(0.6, 0.1))
-    assert row["triage_action"] == TA.HUMAN_REVIEW.value
+    assert row["triage_action"] == TA.LOW_PRIORITY_MONITOR.value
     assert RC.LOW_CONFIDENCE_SAFE.value in row["reason_codes"]
     assert RC.CURRENT_TIER_NOT_SAFE.value not in row["reason_codes"]
     assert RC.QUALITY_WARNING.value not in row["reason_codes"]
+
+
+def test_low_priority_monitor_requires_clean_safe_context(cfg):
+    """Rule 7 only relaxes the confidence bar. Every other auto-clear precondition still routes to Human review."""
+    # current tier not Safe -> Human review
+    row = _triage(cfg, current_tier=ELEV, carry_forward_tier=ELEV, **_probs(0.6, 0.1))
+    assert row["triage_action"] == TA.HUMAN_REVIEW.value
+    # blocking quality flag -> Human review
+    row = _triage(cfg, prediction_status="warning", quality_flags=["MISSING_SIGMA"], **_probs(0.6, 0.1))
+    assert row["triage_action"] == TA.HUMAN_REVIEW.value
+    # allow-listed flag alone is acceptable quality -> Low-priority monitor
+    row = _triage(cfg, prediction_status="warning", quality_flags=["MISSING_SPACE_WEATHER"], **_probs(0.6, 0.1))
+    assert row["triage_action"] == TA.LOW_PRIORITY_MONITOR.value
+    # escalation watch and the human-review rules keep precedence
+    row = _triage(cfg, **_probs(0.6, T_WATCH))
+    assert row["triage_action"] == TA.ESCALATION_WATCH.value
+    row = _triage(cfg, prediction_set=[SAFE, CRIT], **_probs(0.6, 0.1))
+    assert row["triage_action"] == TA.HUMAN_REVIEW.value
+    # a de-escalation claim (current Critical) is never low-priority
+    row = _triage(cfg, current_tier=CRIT, carry_forward_tier=CRIT, **_probs(0.6, 0.1))
+    assert row["triage_action"] == TA.HUMAN_REVIEW.value
+    assert RC.DEESCALATION_CLAIM.value in row["reason_codes"]
 
 
 def test_current_tier_not_safe_blocks_auto_clear(cfg):

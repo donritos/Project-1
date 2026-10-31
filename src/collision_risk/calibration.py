@@ -276,4 +276,8 @@ def prediction_set_metrics(sets: list[list[str] | None], y_true: np.ndarray) -> 
         return {"coverage_empirical": None, "avg_set_size": None, "n": 0}
     cov = float(np.mean([y in s for s, y, o in zip(sets, y_true, ok) if o]))
     size = float(np.mean([len(s) for s, o in zip(sets, ok) if o]))
-    return {"coverage_empirical": cov, "avg_set_size": size, "n": n}
+    by_class: dict[str, float | None] = {}
+    for c in sorted({str(y) for y, o in zip(y_true, ok) if o}):
+        hits = [y in s for s, y, o in zip(sets, y_true, ok) if o and str(y) == c]
+        by_class[c] = float(np.mean(hits)) if hits else None
+    return {"coverage_empirical": cov, "avg_set_size": size, "n": n, "coverage_by_true_class": by_class}

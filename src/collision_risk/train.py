@@ -190,7 +190,8 @@ def multiclass_search(X: pd.DataFrame, y_idx: np.ndarray, groups: np.ndarray, w:
                         "scores": sc, "seconds": round(time.time() - t0, 1)})
     results_sorted = sorted(results, key=lambda r: (-(r["scores"]["critical_f2"] or 0.0), -r["scores"]["macro_f1"]))
     best = results_sorted[0]
-    return {"results": results, "best_index": best["index"], "best": best,
+    return {"results": results, "best_index": best["index"], "best": best, "n_folds": int(cfg["split"]["cv_folds"]),
+            "n_configs": len(results),
             "selection_rule": "max OOF Critical F2 on real_forecast latest snapshots (t=0.5), tie-break macro-F1"}
 
 

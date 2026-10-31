@@ -67,44 +67,47 @@ def _normalise_object_type(s: pd.Series) -> pd.Series:
     return s.where(s.isna(), s.astype(str).str.strip().str.upper())
 
 
-def load_raw(path: str | Path, dataset_id: str, cfg: dict) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Load a CSV, keep only allowed columns, attach stable ids preserving original order."""
-    path = Path(path)
-    raw = pd.read_csv(path)
-    n_source_cols = raw.shape[1]
-    raw.insert(0, "source_row_index", np.arange(len(raw), dtype=np.int64))
-    raw.insert(0, "row_id", [f"{dataset_id}:{i}" for i in range(len(raw))])
-    raw.insert(0, "dataset_id", dataset_id)
-    df, dropped = enforce_allowlist(raw, cfg, allow_target=True)
-    if "c_object_type" in df.columns:
-        df["c_object_type"] = _normalise_object_type(df["c_object_type"])
-    df["event_id"] = df["event_id"].astype("int64")
-    meta = {
-        "path": str(path),
-        "sha256": file_sha256(path),
-        "n_rows": int(len(df)),
-        "n_source_columns": int(n_source_cols),
-        "n_kept_columns": int(df.shape[1] - len(ID_COLUMNS)),
-        "dropped_columns": dropped,
-        "has_target": cfg["target_column"] in df.columns,
-    }
-    return df, meta
+def _normalise_event_ids(values: pd.Series, source_row_index: pd.Series) -> np.ndarray:
+    """Coerce event ids to int64.
+
+    Missing values become -1 (a standalone row that joins no encounter). Anything else must
+    be a finite, integer-valued number: non-numeric text, +/-inf or a fractional id such as
+    1.5 is malformed input and raises, because silently truncating 1.5 to 1 could merge
+    unrelated encounters and inf would crash downstream grouping."""
+    num = pd.to_numeric(values, errors="coerce").astype("float64")
+    missing = values.isna().to_numpy()
+    arr = num.to_numpy()
+    finite = np.isfinite(arr)
+    bad = (~missing & ~finite) | (finite & (arr != np.round(arr)))
+    if bad.any():
+        idx = np.flatnonzero(bad)
+        shown = ", ".join(f"row {int(source_row_index.iloc[i])}={values.iloc[i]!r}" for i in idx[:10])
+        more = "" if len(idx) <= 10 else f" (+{len(idx) - 10} more)"
+        raise ValueError(f"event_id must be a finite integer or missing; offending inputs: {shown}{more}")
+    return np.where(missing | ~finite, -1, arr).astype("int64")
 
 
-def prepare_uploaded(df: pd.DataFrame, dataset_id: str, cfg: dict) -> tuple[pd.DataFrame, list[str]]:
-    """Same treatment as load_raw for an in-memory frame (e.g. dashboard upload or API rows).
+def normalise_cdm_frame(raw: pd.DataFrame, dataset_id: str, cfg: dict, *, keep_existing_ids: bool) -> tuple[pd.DataFrame, list[str]]:
+    """The single normalisation routine behind `load_raw` (CSV) and `prepare_uploaded` (API).
 
-    Missing optional columns are added as NaN; missing event_id becomes -1 (no grouping)."""
-    raw = df.copy().reset_index(drop=True)
-    if "source_row_index" not in raw.columns:
-        raw.insert(0, "source_row_index", np.arange(len(raw), dtype=np.int64))
-    if "row_id" not in raw.columns:
-        raw.insert(0, "row_id", [f"{dataset_id}:{i}" for i in range(len(raw))])
-    raw["dataset_id"] = dataset_id
-    out, dropped = enforce_allowlist(raw, cfg, allow_target=True)
+    - attaches `dataset_id`, `row_id`, `source_row_index` (fresh, or kept when the caller supplied them)
+    - keeps only allowlisted columns and reports the dropped ones
+    - adds every missing optional column as NaN so both entry points accept the same inputs
+    - coerces numeric columns, normalises object type, validates event ids (see `_normalise_event_ids`)
+    - requires `row_id` to be unique within the frame
+    Original row order is preserved."""
+    df = raw.copy().reset_index(drop=True)
+    if not keep_existing_ids:
+        df = df.drop(columns=[c for c in ID_COLUMNS if c in df.columns])
+    if "source_row_index" not in df.columns:
+        df.insert(0, "source_row_index", np.arange(len(df), dtype=np.int64))
+    if "row_id" not in df.columns:
+        df.insert(0, "row_id", [f"{dataset_id}:{i}" for i in range(len(df))])
+    df["dataset_id"] = dataset_id
+    out, dropped = enforce_allowlist(df, cfg, allow_target=True)
     if "event_id" not in out.columns:
-        out["event_id"] = -1
-    out["event_id"] = pd.to_numeric(out["event_id"], errors="coerce").fillna(-1).astype("int64")
+        out["event_id"] = np.nan
+    out["event_id"] = _normalise_event_ids(out["event_id"], out["source_row_index"])
     for c in cfg["allowed_input_columns"]:
         if c not in out.columns:
             out[c] = np.nan
@@ -112,7 +115,42 @@ def prepare_uploaded(df: pd.DataFrame, dataset_id: str, cfg: dict) -> tuple[pd.D
     for c in cfg["allowed_input_columns"]:
         if c not in ("event_id", "c_object_type"):
             out[c] = pd.to_numeric(out[c], errors="coerce")
+    tgt = cfg["target_column"]
+    if tgt in out.columns:
+        out[tgt] = pd.to_numeric(out[tgt], errors="coerce")
+    out["row_id"] = out["row_id"].astype(str)
+    dup = out["row_id"].duplicated(keep=False)
+    if dup.any():
+        raise ValueError(f"row_id values must be unique; duplicates: {sorted(set(out.loc[dup, 'row_id']))[:10]}")
     return out, dropped
+
+
+def load_raw(path: str | Path, dataset_id: str, cfg: dict) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Load a CSV, keep only allowed columns, attach stable ids preserving original order.
+    Uses the same normalisation as `prepare_uploaded`, so a CSV with optional columns omitted
+    or malformed event ids behaves exactly like the in-memory path."""
+    path = Path(path)
+    raw = pd.read_csv(path)
+    allowed = set(cfg["allowed_input_columns"]) | {cfg["target_column"]}
+    df, dropped = normalise_cdm_frame(raw, dataset_id, cfg, keep_existing_ids=False)
+    meta = {
+        "path": str(path),
+        "sha256": file_sha256(path),
+        "n_rows": int(len(df)),
+        "n_source_columns": int(raw.shape[1]),
+        "n_kept_columns": int(len([c for c in raw.columns if c in allowed])),
+        "dropped_columns": dropped,
+        "has_target": cfg["target_column"] in raw.columns,
+    }
+    return df, meta
+
+
+def prepare_uploaded(df: pd.DataFrame, dataset_id: str, cfg: dict) -> tuple[pd.DataFrame, list[str]]:
+    """Same treatment as load_raw for an in-memory frame (e.g. dashboard upload or API rows).
+
+    Caller-supplied `row_id` / `source_row_index` are kept (and must be unique); missing optional
+    columns are added as NaN; a missing event_id becomes -1 (no grouping)."""
+    return normalise_cdm_frame(df, dataset_id, cfg, keep_existing_ids=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -362,10 +400,70 @@ def derive_event_labels(train_csv: str | Path, cfg: dict) -> pd.DataFrame:
     return out.sort_values("event_id").reset_index(drop=True)
 
 
+_USABLE_TRUE = {"yes", "true", "1", "y", "t"}
+_USABLE_FALSE = {"no", "false", "0", "n", "f", "", "nan", "none"}
+
+
+def parse_usable_flag(u: pd.Series) -> pd.Series:
+    """Parse the workbook's `usable_for_training` column regardless of dtype.
+
+    pandas 3 reads a yes/no column as the `str` dtype (not `object`), and `astype(bool)` on
+    strings turns "no" into True, so the text path must never depend on the dtype check."""
+    if pd.api.types.is_bool_dtype(u):
+        return u.astype(bool)
+    if pd.api.types.is_numeric_dtype(u):
+        return (pd.to_numeric(u, errors="coerce").fillna(0) != 0)
+    text = u.astype(str).str.strip().str.lower()
+    unknown = sorted(set(text) - _USABLE_TRUE - _USABLE_FALSE)
+    if unknown:
+        raise ValueError(f"unexpected usable_for_training values in workbook: {unknown}")
+    return text.isin(_USABLE_TRUE)
+
+
+def parse_workbook_labels(lab: pd.DataFrame) -> pd.DataFrame:
+    """Validate and normalise a raw `train_event_labels` sheet into the LABEL_COLUMNS schema."""
+    lab = lab.copy()
+    lab.columns = [str(c).strip() for c in lab.columns]
+    missing = [c for c in LABEL_COLUMNS if c not in lab.columns]
+    if missing:
+        raise ValueError(f"labels workbook missing columns: {missing}")
+    lab = lab[LABEL_COLUMNS].copy()
+    lab["event_id"] = pd.to_numeric(lab["event_id"], errors="raise").astype("int64")
+    lab["final_tier"] = lab["final_tier"].astype(str).str.strip().str.capitalize()
+    valid_tiers = {t.value for t in RiskTier}
+    bad = sorted(set(lab["final_tier"]) - valid_tiers)
+    if bad:
+        raise ValueError(f"unexpected final_tier values in workbook: {bad}")
+    lab["usable_for_training"] = parse_usable_flag(lab["usable_for_training"]).astype(bool)
+    lab["cdm_count_2d_or_more"] = pd.to_numeric(lab["cdm_count_2d_or_more"], errors="coerce").fillna(0).astype("int64")
+    for c in ("final_time_to_tca_days", "final_risk_log10_pc", "final_miss_distance_m"):
+        lab[c] = pd.to_numeric(lab[c], errors="coerce")
+    return lab.sort_values("event_id").reset_index(drop=True)
+
+
+def cross_check_labels(lab: pd.DataFrame, derived: pd.DataFrame) -> dict[str, Any]:
+    """Event-by-event comparison of the workbook with labels recomputed from train_data.csv.
+
+    Compares the final tier, the usable flag and the count of CDMs at >= 2 days, so a parsing
+    error in any of them (not just the tier) is caught."""
+    m = lab.merge(derived, on="event_id", how="outer", suffixes=("", "_recomputed"), indicator=True)
+    both = m[m["_merge"] == "both"]
+    info = {
+        "n_events_only_in_workbook": int((m["_merge"] == "left_only").sum()),
+        "n_events_only_in_data": int((m["_merge"] == "right_only").sum()),
+        "n_tier_mismatches": int((both["final_tier"] != both["final_tier_recomputed"]).sum()),
+        "n_usable_flag_mismatches": int((both["usable_for_training"].astype(bool) != both["usable_for_training_recomputed"].astype(bool)).sum()),
+        "n_cdm_count_2d_mismatches": int((both["cdm_count_2d_or_more"].astype("int64") != both["cdm_count_2d_or_more_recomputed"].astype("int64")).sum()),
+    }
+    info["labels_match_recomputed"] = all(v == 0 for v in info.values())
+    return info
+
+
 def load_event_labels(cfg: dict) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Load the official workbook sheet `train_event_labels` (header on row 3) if present, validate it,
-    and cross-check it against labels recomputed from train_data.csv. Falls back to the recomputed labels
-    when the workbook is missing. Returns (labels, info). Raises if the workbook disagrees with the data."""
+    and cross-check every event's tier, usable flag and 2-day CDM count against labels recomputed from
+    train_data.csv. Falls back to the recomputed labels when the workbook is missing (recorded as
+    labels_source='derived_from_train_data'). Raises if the workbook disagrees with the data."""
     from .config import PROJECT_ROOT
     xlsx = Path(cfg["paths"]["event_labels"])
     xlsx = xlsx if xlsx.is_absolute() else PROJECT_ROOT / xlsx
@@ -374,28 +472,8 @@ def load_event_labels(cfg: dict) -> tuple[pd.DataFrame, dict[str, Any]]:
     derived = derive_event_labels(train_csv, cfg)
     info: dict[str, Any] = {"workbook_path": str(xlsx), "workbook_present": xlsx.exists()}
     if xlsx.exists():
-        lab = pd.read_excel(xlsx, sheet_name="train_event_labels", header=2)
-        lab.columns = [str(c).strip() for c in lab.columns]
-        missing = [c for c in LABEL_COLUMNS if c not in lab.columns]
-        if missing:
-            raise ValueError(f"labels workbook missing columns: {missing}")
-        lab = lab[LABEL_COLUMNS].copy()
-        lab["event_id"] = lab["event_id"].astype("int64")
-        lab["final_tier"] = lab["final_tier"].astype(str).str.strip().str.capitalize()
-        valid_tiers = {t.value for t in RiskTier}
-        bad = sorted(set(lab["final_tier"]) - valid_tiers)
-        if bad:
-            raise ValueError(f"unexpected final_tier values in workbook: {bad}")
-        u = lab["usable_for_training"]
-        lab["usable_for_training"] = u.astype(str).str.strip().str.lower().isin(["yes", "true", "1", "y"]) if u.dtype == object else u.astype(bool)
-        lab = lab.sort_values("event_id").reset_index(drop=True)
-        m = lab.merge(derived, on="event_id", how="outer", suffixes=("", "_recomputed"), indicator=True)
-        info["n_events_only_in_workbook"] = int((m["_merge"] == "left_only").sum())
-        info["n_events_only_in_data"] = int((m["_merge"] == "right_only").sum())
-        both = m[m["_merge"] == "both"]
-        mismatch = int((both["final_tier"] != both["final_tier_recomputed"]).sum())
-        info["n_tier_mismatches"] = mismatch
-        info["labels_match_recomputed"] = mismatch == 0 and info["n_events_only_in_workbook"] == 0 and info["n_events_only_in_data"] == 0
+        lab = parse_workbook_labels(pd.read_excel(xlsx, sheet_name="train_event_labels", header=2))
+        info.update(cross_check_labels(lab, derived))
         info["labels_source"] = "workbook"
         if not info["labels_match_recomputed"]:
             raise RuntimeError(f"Labels workbook disagrees with train_data.csv: {info}")
@@ -405,6 +483,8 @@ def load_event_labels(cfg: dict) -> tuple[pd.DataFrame, dict[str, Any]]:
         info["labels_source"] = "derived_from_train_data"
         info["labels_match_recomputed"] = True
         info["n_tier_mismatches"] = 0
+        info["n_usable_flag_mismatches"] = 0
+        info["note"] = "workbook absent: labels recomputed from train_data.csv; no workbook comparison was possible"
     labels["is_trivial"] = labels["final_time_to_tca_days"] >= float(cfg["horizon"]["min_days"]) - 1e-12
     labels.loc[~labels["usable_for_training"], "is_trivial"] = False
     info.update({

@@ -58,7 +58,10 @@ uv run python scripts/make_results.py
 
 `predict` accepts any CSV of CDMs with the permitted columns, e.g.
 `uv run collision-risk predict --input my_cdms.csv --dataset-id ops_2026_11 --out-dir artifacts/ops`.
-CDMs under two days are dropped before any feature is built.
+The CSV and in-memory (`service.predict_batch`) paths share one normalisation routine: optional
+columns may be omitted (they become missing-value flags), a missing `event_id` makes the row a
+standalone encounter, and a non-finite or fractional `event_id` is rejected with a clear error
+instead of being silently truncated. CDMs under two days are dropped before any feature is built.
 
 ## The task
 
@@ -74,10 +77,18 @@ not the rule. The official tier rules (applied most severe first, metres) are un
 
 **Labels.** One row per training event: final risk, final miss distance, final tier, and a
 usable flag. The loader reads the official workbook (`train_event_labels` sheet, header on row 3)
-when it is present and cross-checks every tier against the tier recomputed from the event's last
-CDM, failing loudly on any difference. When the workbook is absent it derives the identical table
-from `train_data.csv` and records `labels_source = derived_from_train_data` in the audit.
-Recomputed tiers match the workbook for 100 percent of events.
+when it is present and cross-checks every event's final tier, usable flag and count of CDMs at
+2 or more days against the values recomputed from the event's CDMs, failing loudly on any
+difference. When the workbook is absent it derives the same table from `train_data.csv` and
+records `labels_source = derived_from_train_data` in the audit.
+
+**Status of the shipped run: the workbook was not available** (`audit.json` records
+`workbook_present: false`), so the shipped labels are the derived ones and **no comparison with
+the official workbook has been made yet**. The derived definition (tier of the last CDM) is the
+one the organisers describe; the comparison must be run once the file from the organisers'
+Drive folder is placed in `data/raw/`. The yes/no text of the usable column is parsed explicitly
+because pandas 3 reads it as a string dtype, where a naive boolean cast would mark every event
+usable.
 
 **Usable events.** Of 13,154 training events, 11,942 have at least one CDM at 2 or more days
 (8,946 Safe, 2,162 Elevated, 834 Critical). The other 1,212 are excluded from training and
@@ -160,20 +171,36 @@ representation (`has_history = 0`, reason code `NO_HISTORY`).
   P(Critical) ≤ P(≥ Elevated) enforced.
 
 Probabilities are isotonic-calibrated per class on development OOF predictions and renormalised.
+**`p_critical` is the calibrated probability that the event's final official tier is Critical.
+It is not a collision probability (Pc)**; the same holds for `p_safe` and `p_elevated`.
 The decision rule predicts Critical when P(Critical) ≥ `t_crit`, else Elevated when
 P(Elevated) + P(Critical) ≥ `t_elev`, else Safe; both thresholds are tuned on OOF and frozen in
 the bundle. Split-conformal prediction sets at 90 percent are calibrated on OOF and reported
-with their empirical coverage.
+with marginal and class-conditional coverage, set sizes, and the share of events whose
+threshold decision falls outside the set. Calibration, decision thresholds, triage thresholds and
+the conformal quantile are all fitted on the same development OOF predictions, so the sets carry
+only an empirical, not a formal, coverage guarantee.
 
 ### Triage policy (`policy.assign_triage`), in precedence order
 
 1. Invalid data or failed quality → Human review - insufficient data
 2. Predicted Critical → Maneuver planning review
-3. Not predicted Critical but P(Critical) ≥ `t_watch` → **Escalation watch** (watch list capped at 5 percent of events, tuned on OOF)
+3. Not predicted Critical but P(Critical) ≥ `t_watch` → **Escalation watch**. `t_watch` is tuned so the list holds about 5 percent of development events; it is a threshold, not a hard cap, so the share on new data is reported rather than enforced
 4. Human review: model and carry-forward disagree by two tiers, the prediction set holds two non-adjacent classes, or the current tier is Critical and the model forecasts lower (a de-escalation claim, never auto-cleared)
 5. Predicted Elevated → Monitor
-6. Predicted Safe with P(Safe) ≥ `t_clear`, current tier Safe and acceptable quality → Auto-clear candidate (`t_clear` is the largest auto-clear share with zero OOF final-Critical events cleared)
-7. Everything else → Human review
+6. Predicted Safe with P(Safe) ≥ `t_clear`, current tier Safe and acceptable quality → Auto-clear candidate (`t_clear` is the smallest bar with zero OOF final-Critical events cleared, which puts it near 0.999)
+7. Predicted Safe below that bar, current tier Safe and acceptable quality → **Low-priority monitor**. Without this rule roughly half of all events, most of them predicted Safe with P(Safe) above 0.99, fell through to Human review and swamped the review queue
+8. Everything else (predicted Safe with a non-Safe current tier or blocking quality flags) → Human review
+
+Review workload is counted as Maneuver planning review + Escalation watch + Human review.
+Auto-clear and low-priority monitor shares are *potential* workload reductions measured on the
+holdout, not demonstrated labour savings; no operator study has been run. The evaluation reports
+a true-final-tier by triage-action table so that any final-Critical event parked in Monitor,
+Low-priority monitor or Auto-clear is visible, not only the auto-clear count.
+
+For each snapshot the carry-forward tier used by rule 4 is the tier known at that snapshot, so a
+later CDM can never change an earlier snapshot's action or reason codes (covered by a regression
+test).
 
 Reason codes record every applicable condition, including trend codes (`RISK_RISING`,
 `MISS_SHRINKING`, `SIGMA_GROWING`, `HIGH_VOLATILITY`) derived from the event-so-far slopes.
@@ -191,13 +218,13 @@ The calibrated probability is reported alongside and is not part of the additive
 
 | File | Content |
 |---|---|
-| `event_forecasts.parquet` | one row per test event (latest snapshot): current tier, probabilities, predicted final tier, prediction set, triage action, reason codes, explanation id, versions |
-| `snapshot_forecasts.parquet` | the same fields for every snapshot CDM (dashboard timeline) |
+| `event_forecasts.parquet` | one row per test event (latest snapshot): current tier, probabilities, predicted final tier, prediction set, triage action, reason codes, explanation id, RTN position, versions |
+| `snapshot_forecasts.parquet` | the same fields for every snapshot CDM, including miss distance and RTN position against time to TCA (dashboard timeline) |
 | `explanations.parquet` | Critical-class contributions keyed by `explanation_id` |
 | `submission.csv` | one row per test event sorted by `event_id`: `event_id, predicted_final_tier, p_safe, p_elevated, p_critical, triage_action` |
 | `evaluation.json` | holdout metrics for every candidate and subset, selection trace, thresholds, ablations, mission-held-out CV, illustrative cases |
 | `holdout_forecasts.parquet`, `evaluation_labels.parquet` | holdout forecasts and the ground truth, kept separate |
-| `manifest.json` | versions, hashes, units, split hash, thresholds, predicted class mix on test, timing |
+| `manifest.json` | versions, hashes, units, split hash, thresholds, predicted class mix on test, timing; provenance fields come from the bundle's own saved configuration, and `submission.csv` is written with LF line endings so its hash is reproducible after checkout |
 | `audit.json`, `splits.json` | data and label audit, the event partition |
 | `model/` | shipped bundle; `candidates/` | the other evaluated candidates and baselines |
 
@@ -216,12 +243,26 @@ with high-risk events.
 - Almost all final-Critical events are Critical because the final miss distance is under
   1,000 m; the model is mostly forecasting miss-distance evolution, and its advantage over
   carry-forward comes from escalations it anticipates and de-escalations it catches.
-- The mission-held-out check is reported, not used for selection; performance on an unseen
-  satellite may be lower than the random-event holdout suggests.
+- The model trades precision for recall: on real forecasts it catches more final-Critical
+  events than carry-forward but raises more false Critical alarms (lower Critical precision and
+  macro-F1). In collision avoidance that trade is deliberate, and it is stated rather than hidden.
+- The mission-held-out check is reported, not used for selection, and it is not fully
+  independent: it reuses the hyperparameters, isotonic calibrator and decision thresholds fitted
+  on all development events. Performance on an unseen satellite may be lower than it suggests.
 - Zero final-Critical events auto-cleared is a tuning target on development data; the holdout
   count is reported and must be read alongside the bootstrap intervals.
+- In the shipped run every conformal prediction set was a singleton, so the sets add nothing
+  beyond the point decision; the class-conditional coverage table in RESULTS.md is the honest
+  statement of what they provide.
+- The official labels workbook has not yet been compared with the derived labels (see Labels).
 - Events with no CDM at 2 or more days cannot be forecast and are excluded.
-- Final risk regression and the dashboard are out of scope for this repository state.
+- The parquet artifacts (`event_forecasts`, `snapshot_forecasts`, `explanations`,
+  `holdout_forecasts`, `evaluation_labels`) are gitignored. The artifact readers in `service.py`
+  need them, so run `predict` (and `train` for the holdout files) with the data in place before
+  demoing; the JSON artifacts and the model bundle are committed.
+- Final risk regression and the dashboard are out of scope for this repository state. The brief
+  asks for risk and miss distance against time to TCA, RTN position plots and a warnings view by
+  time-to-TCA window; `snapshot_forecasts.parquet` now carries the RTN coordinates for it.
 
 ## Project structure
 

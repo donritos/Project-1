@@ -8,7 +8,8 @@ import pandas as pd
 import pytest
 
 from collision_risk import features as FE
-from collision_risk.data import apply_horizon, derive_event_labels, enforce_allowlist, load_event_labels
+from collision_risk.data import (apply_horizon, cross_check_labels, derive_event_labels, enforce_allowlist,
+                                 load_event_labels, parse_usable_flag, parse_workbook_labels)
 from collision_risk.policy import tier_from_true_risk
 
 SNAP_COLS = FE.EVENT_SO_FAR_BASE + FE.EVENT_SO_FAR_RISK + FE.HISTORY + FE.PHYSICS
@@ -124,3 +125,90 @@ def test_train_and_test_are_never_joined_on_event_id(synthetic_allowlisted, cfg)
 def test_enforce_allowlist_keeps_risk_but_drops_mission(synthetic_raw, cfg):
     kept, dropped = enforce_allowlist(synthetic_raw, cfg)
     assert "risk" in kept.columns and "mission_id" in dropped
+
+
+# --------------------------------------------------------------------------- #
+# Workbook parsing: the usable flag must survive pandas 3 string dtypes
+# --------------------------------------------------------------------------- #
+def _with_unusable(derived: pd.DataFrame, n: int = 7) -> pd.DataFrame:
+    """The synthetic fixture has a CDM at >= 2 days for every event; mark the first n as unusable so the
+    usable-flag path is exercised (as 1,212 of 13,154 real events are)."""
+    d = derived.copy()
+    d.loc[d.index[:n], "cdm_count_2d_or_more"] = 0
+    d.loc[d.index[:n], "usable_for_training"] = False
+    return d
+
+
+def _as_workbook(derived: pd.DataFrame) -> pd.DataFrame:
+    """Mimic the official sheet: yes/no text for the usable flag, lower-case tiers, string columns."""
+    wb = derived.drop(columns=["is_trivial"], errors="ignore").copy()
+    wb["usable_for_training"] = np.where(wb["usable_for_training"], "yes", "no")
+    wb["final_tier"] = wb["final_tier"].str.lower()
+    return wb
+
+
+def test_parse_usable_flag_text_is_not_truthy_by_dtype():
+    text = pd.Series(["yes", "no", " No ", "YES"])
+    assert text.dtype != object or True  # pandas 3 uses the str dtype; the parser must not care
+    assert parse_usable_flag(text).tolist() == [True, False, False, True]
+    assert parse_usable_flag(pd.Series([True, False])).tolist() == [True, False]
+    assert parse_usable_flag(pd.Series([1, 0, 2])).tolist() == [True, False, True]
+    with pytest.raises(ValueError):
+        parse_usable_flag(pd.Series(["yes", "maybe"]))
+
+
+def test_parse_workbook_labels_matches_derived_and_cross_check_passes(synthetic_paths, cfg):
+    derived = _with_unusable(derive_event_labels(synthetic_paths["train"], cfg))
+    assert (~derived["usable_for_training"]).any()
+    lab = parse_workbook_labels(_as_workbook(derived))
+    assert lab["usable_for_training"].dtype == bool
+    assert lab["usable_for_training"].tolist() == derived["usable_for_training"].tolist()
+    assert lab["final_tier"].tolist() == derived["final_tier"].tolist()
+    info = cross_check_labels(lab, derived)
+    assert info["labels_match_recomputed"] and info["n_usable_flag_mismatches"] == 0
+
+
+def test_cross_check_catches_usable_flag_corruption_not_only_tiers(synthetic_paths, cfg):
+    derived = _with_unusable(derive_event_labels(synthetic_paths["train"], cfg))
+    wb = _as_workbook(derived)
+    wb["usable_for_training"] = "yes"  # the failure mode: every event marked usable, tiers untouched
+    lab = parse_workbook_labels(wb)
+    info = cross_check_labels(lab, derived)
+    assert info["n_tier_mismatches"] == 0
+    assert info["n_usable_flag_mismatches"] == int((~derived["usable_for_training"]).sum()) > 0
+    assert not info["labels_match_recomputed"]
+
+
+def test_load_event_labels_reads_workbook_and_cross_checks(synthetic_paths, cfg, tmp_path):
+    pytest.importorskip("openpyxl")
+    import copy
+    derived = derive_event_labels(synthetic_paths["train"], cfg)
+    xlsx = tmp_path / "challenge1_event_labels.xlsx"
+    with pd.ExcelWriter(xlsx) as xw:
+        # two title rows above the header, as in the official workbook (header on row 3)
+        pd.DataFrame([["Challenge 1 event labels"], [""]]).to_excel(xw, sheet_name="train_event_labels", index=False, header=False)
+        _as_workbook(derived).to_excel(xw, sheet_name="train_event_labels", index=False, startrow=2)
+    c = copy.deepcopy(cfg)
+    c["paths"].update({"raw_train": str(synthetic_paths["train"]), "event_labels": str(xlsx)})
+    labels, info = load_event_labels(c)
+    assert info["labels_source"] == "workbook" and info["labels_match_recomputed"]
+    assert info["n_usable"] == int(derived["usable_for_training"].sum())
+
+
+def test_event_so_far_features_are_batch_independent_to_the_last_bit(synthetic_allowlisted, cfg):
+    """A flat series must have volatility exactly 0, and an event's features must be bit-identical
+    whether it is scored alone or inside a large batch (no cross-event cumsum rounding)."""
+    df, _ = synthetic_allowlisted
+    h = apply_horizon(df, 2.0).reset_index(drop=True)
+    flat = h[h["event_id"] == 4].copy()
+    flat["max_risk_estimate"] = -7.1234567
+    if "risk" in flat.columns:
+        flat["risk"] = -7.1234567
+    big = pd.concat([h[h["event_id"] != 4], flat], ignore_index=True)
+    snap_big = FE.build_event_snapshots(big, cfg)
+    snap_alone = FE.build_event_snapshots(flat.reset_index(drop=True), cfg)
+    a = snap_big[snap_big["event_id"] == 4].sort_values("row_id").reset_index(drop=True)
+    b = snap_alone.sort_values("row_id").reset_index(drop=True)
+    assert (a["volatility_mre"].fillna(0) == 0).all() and (b["volatility_mre"].fillna(0) == 0).all()
+    for c in FE.EVENT_SO_FAR_BASE + FE.EVENT_SO_FAR_RISK:
+        np.testing.assert_array_equal(a[c].to_numpy(), b[c].to_numpy(), err_msg=c)

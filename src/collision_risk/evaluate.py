@@ -1,21 +1,24 @@
-"""Evaluation report for collision-risk triage predictions.
+"""Evaluation of final-tier forecasts for collision-risk triage.
 
-Consumes a prediction frame that already carries true and predicted tiers
-(tier assignment lives in policy.py and is deliberately not imported here) and
-produces a JSON-serialisable metrics dict across four views:
+The task: forecast each event's FINAL tier (Safe / Elevated / Critical) from the
+CDMs available at >= 2 days before TCA. Evaluation is one row per event (the
+`is_latest_snapshot` row of the frame described in docs/forecast_schema.md),
+always reported on three subsets:
 
-- row_level:           every CDM row
-- latest_cdm:          one row per event, the CDM closest to TCA
-- horizon_slice:       rows with time_to_tca_days >= cfg['split']['test_horizon_min_days']
-- horizon_latest_cdm:  latest_cdm_view of the horizon slice
+- all_usable:     every event
+- trivial:        `is_trivial` is True (the final CDM was itself at >= 2 days, so the
+                  answer is visible in the input)
+- real_forecast:  `~is_trivial` (the headline subset)
 
 Conventions
-- risk values are log10(Pc); the floor value (cfg['model']['target_floor'],
-  default -30) marks "no meaningful probability".
-- Any metric whose denominator is zero is reported as None and listed under the
-  group's 'undefined' key. Every group dict always carries an 'undefined' list.
-- Confusion matrices use labels ['Critical', 'Elevated', 'Safe', 'Invalid'];
-  None / NaN tiers (true or predicted) map to 'Invalid'.
+- Tier order everywhere is TIERS = [Safe, Elevated, Critical]; confusion matrices
+  have true tiers on rows and predicted tiers on columns.
+- A None / NaN predicted tier is never counted as Safe. It is counted as wrong and,
+  when any exist, appears as an extra 'Invalid' column in the confusion matrix.
+- Any metric with a zero denominator is None and listed under the enclosing
+  group's 'undefined' key. No NaN ever leaves this module
+  (json.dumps(..., allow_nan=False) passes on every result).
+- Tier assignment and triage live in policy.py and are deliberately not imported.
 """
 from __future__ import annotations
 
@@ -24,35 +27,42 @@ from typing import Any, Iterable, Optional, Sequence
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import average_precision_score, brier_score_loss, f1_score
+from sklearn.metrics import average_precision_score, roc_auc_score
 
 from .data import event_group_codes
 
-TIER_LABELS: list[str] = ["Critical", "Elevated", "Safe"]
+TIERS: list[str] = ["Safe", "Elevated", "Critical"]
+TIER_INDEX: dict[str, int] = {t: i for i, t in enumerate(TIERS)}
 INVALID_LABEL = "Invalid"
-CONFUSION_LABELS: list[str] = TIER_LABELS + [INVALID_LABEL]
 
 AUTO_CLEAR_ACTION = "Auto-clear candidate"
 MANEUVER_REVIEW_ACTION = "Maneuver planning review"
 HUMAN_REVIEW_ACTION = "Human review"
 HUMAN_REVIEW_INSUFFICIENT_ACTION = "Human review - insufficient data"
+ESCALATION_WATCH_ACTION = "Escalation watch"
+MONITOR_ACTION = "Monitor"
 HUMAN_REVIEW_ACTIONS = (HUMAN_REVIEW_ACTION, HUMAN_REVIEW_INSUFFICIENT_ACTION)
 
-DEFAULT_CRITICAL_RISK = -4.0
-DEFAULT_ELEVATED_RISK = -6.0
-DEFAULT_TARGET_FLOOR = -30.0
+PROB_COLUMNS: list[str] = ["p_safe", "p_elevated", "p_critical"]
+SUBSET_NAMES: tuple[str, ...] = ("all_usable", "trivial", "real_forecast")
+BOOTSTRAP_METRICS: tuple[str, ...] = ("critical_recall", "critical_precision", "macro_f1", "auto_clear_share")
+LEAD_TIME_EDGES: list[float] = [2.0, 3.0, 4.0, 5.0, math.inf]
+LEAD_TIME_LABELS: list[str] = ["[2,3)", "[3,4)", "[4,5)", "[5,inf)"]
+LEAD_TIME_OTHER = "<2_or_missing"
+N_RELIABILITY_BINS = 10
+LOG_LOSS_CLIP = 1e-12
 DEFAULT_COVERAGE = 0.90
-
-BOOTSTRAP_METRICS = ("critical_recall", "critical_precision", "mae", "coverage")
 
 
 # --------------------------------------------------------------------------- #
 # Generic helpers
 # --------------------------------------------------------------------------- #
 def _is_missing(x: Any) -> bool:
-    """True for None, NaN, pd.NA and the like."""
+    """True for None, NaN, pd.NA and the like (never for lists/arrays)."""
     if x is None:
         return True
+    if isinstance(x, (list, tuple, set, dict, np.ndarray)):
+        return False
     try:
         return bool(pd.isna(x))
     except (TypeError, ValueError):
@@ -108,9 +118,9 @@ def _safe_div(num: float, den: float) -> Optional[float]:
 
 
 def _f_beta(precision: Optional[float], recall: Optional[float], beta: float = 2.0) -> Optional[float]:
-    """F-beta from precision/recall. Undefined when recall is undefined (no true
-    positives in the truth); if precision is undefined (no predicted positives)
-    recall is zero, so F-beta is zero (sklearn zero_division=0 convention)."""
+    """F-beta from precision / recall. Undefined when recall is undefined (no
+    positives in the truth); when precision is undefined (nothing predicted
+    positive) recall is zero, so F-beta is zero (sklearn zero_division=0)."""
     if recall is None:
         return None
     if precision is None:
@@ -123,27 +133,13 @@ def _f_beta(precision: Optional[float], recall: Optional[float], beta: float = 2
 
 
 def _finalise_group(group: dict, exclude: Iterable[str] = ()) -> dict:
-    """Attach the 'undefined' list: every top-level scalar key that is None."""
+    """Attach the 'undefined' list: every top-level key (not excluded) whose value is None."""
     excl = set(exclude) | {"undefined"}
-    undefined = [k for k, v in group.items() if k not in excl and v is None]
-    group["undefined"] = undefined
+    group["undefined"] = [k for k, v in group.items() if k not in excl and v is None]
     return group
 
 
-def _tier_array(values: Sequence | pd.Series | np.ndarray) -> np.ndarray:
-    """Normalise a tier column to an object array of strings in CONFUSION_LABELS."""
-    out = []
-    for v in list(values):
-        if _is_missing(v):
-            out.append(INVALID_LABEL)
-            continue
-        s = v.value if hasattr(v, "value") else v
-        s = str(s)
-        out.append(s if s in TIER_LABELS else INVALID_LABEL)
-    return np.asarray(out, dtype=object)
-
-
-def _get(cfg: dict, path: Sequence[str], default: Any) -> Any:
+def _get(cfg: Any, path: Sequence[str], default: Any) -> Any:
     cur: Any = cfg or {}
     for key in path:
         if not isinstance(cur, dict) or key not in cur:
@@ -152,10 +148,25 @@ def _get(cfg: dict, path: Sequence[str], default: Any) -> Any:
     return cur
 
 
-def _float_col(df: pd.DataFrame, col: str) -> np.ndarray:
+def _tier_array(values: Any) -> np.ndarray:
+    """Normalise a tier sequence to an object array of TIERS entries or 'Invalid'."""
+    if values is None:
+        return np.asarray([], dtype=object)
+    out = []
+    for v in list(values):
+        if _is_missing(v):
+            out.append(INVALID_LABEL)
+            continue
+        s = v.value if hasattr(v, "value") and not isinstance(v, str) else v
+        s = str(s)
+        out.append(s if s in TIER_INDEX else INVALID_LABEL)
+    return np.asarray(out, dtype=object)
+
+
+def _tier_col(df: pd.DataFrame, col: str) -> np.ndarray:
     if col in df.columns:
-        return pd.to_numeric(df[col], errors="coerce").to_numpy(dtype=float)
-    return np.full(len(df), np.nan, dtype=float)
+        return _tier_array(df[col].tolist())
+    return np.full(len(df), INVALID_LABEL, dtype=object)
 
 
 def _str_col(df: pd.DataFrame, col: str) -> np.ndarray:
@@ -166,31 +177,46 @@ def _str_col(df: pd.DataFrame, col: str) -> np.ndarray:
         if _is_missing(v):
             out.append(None)
         else:
-            out.append(str(v.value if hasattr(v, "value") else v))
+            out.append(str(v.value if hasattr(v, "value") and not isinstance(v, str) else v))
     return np.asarray(out, dtype=object)
+
+
+def _float_col(df: pd.DataFrame, col: str) -> np.ndarray:
+    if col in df.columns:
+        return pd.to_numeric(df[col], errors="coerce").to_numpy(dtype=float)
+    return np.full(len(df), np.nan, dtype=float)
+
+
+def _bool_col(df: pd.DataFrame, col: str, default: bool = False) -> np.ndarray:
+    if col not in df.columns:
+        return np.full(len(df), default, dtype=bool)
+    return np.asarray([default if _is_missing(v) else bool(v) for v in df[col].tolist()], dtype=bool)
+
+
+def _prob_matrix(df: pd.DataFrame) -> np.ndarray:
+    return np.column_stack([_float_col(df, c) for c in PROB_COLUMNS]) if len(df) else np.zeros((0, 3))
+
+
+def _class_counts(tiers: np.ndarray) -> dict[str, int]:
+    return {t: int(np.sum(tiers == t)) for t in TIERS}
 
 
 # --------------------------------------------------------------------------- #
 # Views
 # --------------------------------------------------------------------------- #
-def latest_cdm_view(df: pd.DataFrame) -> pd.DataFrame:
-    """One row per (dataset_id, event_id), or event_id if dataset_id is absent.
-
-    Select the row with the smallest time_to_tca_days.
-
-    Ties are broken by the last occurrence in input order. All columns are
-    preserved; the original index is kept. Rows whose time_to_tca_days is NaN
-    only win when every row of the event is NaN.
-    """
+def latest_snapshot_view(df: pd.DataFrame) -> pd.DataFrame:
+    """One row per event: the rows flagged `is_latest_snapshot`. When that column is
+    absent, fall back to the row with the smallest `time_to_tca_days` per
+    (dataset_id, event_id) (last occurrence wins ties; NaN only wins when every row
+    of the event is NaN). Index is preserved."""
     if len(df) == 0:
         return df.copy()
+    if "is_latest_snapshot" in df.columns:
+        mask = _bool_col(df, "is_latest_snapshot")
+        return df[mask].copy()
     order = np.arange(len(df))
-    ttca = pd.to_numeric(df["time_to_tca_days"], errors="coerce").to_numpy(dtype=float)
-    # NaN sorts last so valid rows are preferred; stable sort keeps input order
-    # among ties, so taking the last row per event picks the last occurrence.
+    ttca = _float_col(df, "time_to_tca_days")
     key = pd.DataFrame({"_event": event_group_codes(df), "_ttca": ttca, "_pos": order})
-    # Per event: the minimal time_to_tca (NaN only when every row is NaN), then
-    # among rows at that minimum the largest input position (last occurrence).
     min_ttca = key.groupby("_event", sort=False)["_ttca"].transform("min")
     is_min = (key["_ttca"] == min_ttca) | (key["_ttca"].isna() & min_ttca.isna())
     picked = key[is_min].groupby("_event", sort=False)["_pos"].max()
@@ -199,226 +225,369 @@ def latest_cdm_view(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------- #
-# Tier metrics
+# Classification metrics
 # --------------------------------------------------------------------------- #
-def _binary_prf(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[Optional[float], Optional[float], Optional[float], int]:
+def _binary_prf(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[Optional[float], Optional[float], Optional[float]]:
     tp = int(np.sum(y_true & y_pred))
-    n_true = int(np.sum(y_true))
-    n_pred = int(np.sum(y_pred))
-    recall = _safe_div(tp, n_true)
-    precision = _safe_div(tp, n_pred)
-    return recall, precision, _f_beta(precision, recall, 2.0), tp
+    recall = _safe_div(tp, int(np.sum(y_true)))
+    precision = _safe_div(tp, int(np.sum(y_pred)))
+    return recall, precision, _f_beta(precision, recall, 2.0)
 
 
-def tier_metrics(y_true_tier, y_pred_tier) -> dict:
-    """Tier classification metrics.
+def classification_metrics(y_true, y_pred) -> dict:
+    """Three-tier classification metrics.
 
-    None / NaN tiers are treated as the 'Invalid' class in the confusion matrix.
-    Critical and Elevated-or-above (Critical or Elevated) recall / precision / F2
-    are computed as binary problems; macro_f1 is sklearn f1_score over the three
-    real tiers (zero_division=0).
-    """
-    yt = _tier_array(y_true_tier)
-    yp = _tier_array(y_pred_tier)
-    n = len(yt)
+    Rows whose truth is missing / not a tier are dropped (`n_dropped_invalid_truth`).
+    Predictions that are None / NaN / not a tier count as wrong: when any exist the
+    confusion matrix gets a 4th 'Invalid' column (never a Safe prediction).
+    `macro_f1` averages F1 over the tiers present in truth or predictions
+    (sklearn's default label set, zero_division=0)."""
+    yt = _tier_array(y_true)
+    yp = _tier_array(y_pred)
+    keep = yt != INVALID_LABEL
+    n_dropped = int(np.sum(~keep))
+    yt, yp = yt[keep], yp[keep]
+    n = int(len(yt))
 
-    crit_t = yt == "Critical"
-    crit_p = yp == "Critical"
+    n_invalid_pred = int(np.sum(yp == INVALID_LABEL))
+    pred_labels = list(TIERS) + ([INVALID_LABEL] if n_invalid_pred else [])
+    col_index = {lab: i for i, lab in enumerate(pred_labels)}
+    counts = np.zeros((len(TIERS), len(pred_labels)), dtype=int)
+    for t, p in zip(yt, yp):
+        counts[TIER_INDEX[t], col_index[p]] += 1
+    row_sums = counts.sum(axis=1)
+    row_norm = [
+        [float(c) / float(s) for c in row] if s > 0 else None
+        for row, s in zip(counts.tolist(), row_sums.tolist())
+    ]
+
+    per_class: dict[str, dict] = {}
+    f1_present: list[float] = []
+    for i, tier in enumerate(TIERS):
+        tp = int(counts[i, i])
+        support = int(row_sums[i])
+        n_pred = int(counts[:, i].sum())
+        prec = _safe_div(tp, n_pred)
+        rec = _safe_div(tp, support)
+        f1 = _f_beta(prec, rec, 1.0)
+        per_class[tier] = {"precision": prec, "recall": rec, "f1": f1, "support": support, "n_predicted": n_pred}
+        if support > 0 or n_pred > 0:
+            f1_present.append(0.0 if f1 is None else f1)
+    macro_f1 = float(np.mean(f1_present)) if (n > 0 and f1_present) else None
+    accuracy = _safe_div(int(np.trace(counts[:, : len(TIERS)])), n)
+
+    crit_t, crit_p = yt == "Critical", yp == "Critical"
     elev_t = crit_t | (yt == "Elevated")
     elev_p = crit_p | (yp == "Elevated")
-
-    c_rec, c_prec, c_f2, _ = _binary_prf(crit_t, crit_p)
-    e_rec, e_prec, e_f2, _ = _binary_prf(elev_t, elev_p)
-
-    # Confusion: rows = true, cols = predicted.
-    idx = {lab: i for i, lab in enumerate(CONFUSION_LABELS)}
-    matrix = np.zeros((len(CONFUSION_LABELS), len(CONFUSION_LABELS)), dtype=int)
-    for t, p in zip(yt, yp):
-        matrix[idx[t], idx[p]] += 1
-
-    if n == 0 or not np.any(np.isin(yt, TIER_LABELS)):
-        macro_f1 = None
-    else:
-        macro_f1 = float(
-            f1_score(yt, yp, labels=TIER_LABELS, average="macro", zero_division=0)
-        )
+    c_rec, c_prec, c_f2 = _binary_prf(crit_t, crit_p)
+    e_rec, e_prec, e_f2 = _binary_prf(elev_t, elev_p)
 
     group = {
+        "n": n,
+        "n_dropped_invalid_truth": n_dropped,
+        "n_invalid_pred": n_invalid_pred,
+        "confusion": {
+            "labels": list(TIERS),
+            "pred_labels": pred_labels,
+            "counts": counts.tolist(),
+            "row_normalised": row_norm,
+            "note": (
+                "rows = true tier, columns = predicted tier"
+                + ("; 'Invalid' column = missing predictions counted as wrong" if n_invalid_pred else "")
+            ),
+        },
+        "per_class": per_class,
+        "accuracy": accuracy,
+        "macro_f1": macro_f1,
         "critical_recall": c_rec,
         "critical_precision": c_prec,
         "critical_f2": c_f2,
         "elevated_or_above_recall": e_rec,
         "elevated_or_above_precision": e_prec,
         "elevated_or_above_f2": e_f2,
-        "macro_f1": macro_f1,
-        "confusion": {"labels": list(CONFUSION_LABELS), "matrix": matrix.tolist()},
     }
-    return _finalise_group(group, exclude=("confusion",))
+    group = _finalise_group(group, exclude=("n", "n_dropped_invalid_truth", "n_invalid_pred", "confusion", "per_class"))
+    for tier, stats in per_class.items():
+        for k in ("precision", "recall", "f1"):
+            if stats[k] is None:
+                group["undefined"].append(f"per_class.{tier}.{k}")
+    return group
 
 
 # --------------------------------------------------------------------------- #
-# Per-view metric groups
+# Probability metrics
 # --------------------------------------------------------------------------- #
-def _pc_only_metrics(risk_true: np.ndarray, risk_pred: np.ndarray, critical_risk: float) -> dict:
-    """Critical defined ONLY by the risk threshold (no distance rule)."""
-    yt = np.where(np.isnan(risk_true), False, risk_true >= critical_risk)
-    yp = np.where(np.isnan(risk_pred), False, risk_pred >= critical_risk)
-    rec, prec, f2, tp = _binary_prf(yt.astype(bool), yp.astype(bool))
-    group = {
-        "critical_recall": rec,
-        "critical_precision": prec,
-        "critical_f2": f2,
-        "n_true_positive_rows": int(tp),
+def _empty_reliability() -> dict:
+    edges = np.linspace(0.0, 1.0, N_RELIABILITY_BINS + 1)
+    return {
+        "bin_lower": edges[:-1].tolist(),
+        "bin_upper": edges[1:].tolist(),
+        "mean_pred": [None] * N_RELIABILITY_BINS,
+        "frac_pos": [None] * N_RELIABILITY_BINS,
+        "count": [0] * N_RELIABILITY_BINS,
+        "ece": None,
     }
-    return _finalise_group(group, exclude=("n_true_positive_rows",))
 
 
-def _mae_rmse(err: np.ndarray) -> tuple[Optional[float], Optional[float]]:
-    if err.size == 0:
-        return None, None
-    return float(np.mean(np.abs(err))), float(np.sqrt(np.mean(err ** 2)))
+def _reliability(p: np.ndarray, y: np.ndarray) -> dict:
+    """One-vs-rest reliability table over 10 equal-width bins (p = 1 falls in the last bin)."""
+    out = _empty_reliability()
+    n = len(p)
+    if n == 0:
+        return out
+    edges = np.linspace(0.0, 1.0, N_RELIABILITY_BINS + 1)
+    bins = np.clip(np.digitize(np.clip(p, 0.0, 1.0), edges[1:-1], right=False), 0, N_RELIABILITY_BINS - 1)
+    count = np.bincount(bins, minlength=N_RELIABILITY_BINS).astype(float)
+    sum_pred = np.bincount(bins, weights=p, minlength=N_RELIABILITY_BINS)
+    sum_pos = np.bincount(bins, weights=y.astype(float), minlength=N_RELIABILITY_BINS)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mean_pred = np.where(count > 0, sum_pred / count, np.nan)
+        frac_pos = np.where(count > 0, sum_pos / count, np.nan)
+    nonempty = count > 0
+    ece = float(np.sum(count[nonempty] / n * np.abs(mean_pred[nonempty] - frac_pos[nonempty])))
+    out["mean_pred"] = [None if not nonempty[i] else float(mean_pred[i]) for i in range(N_RELIABILITY_BINS)]
+    out["frac_pos"] = [None if not nonempty[i] else float(frac_pos[i]) for i in range(N_RELIABILITY_BINS)]
+    out["count"] = [int(c) for c in count]
+    out["ece"] = ece
+    return out
 
 
-def _regression_metrics(risk_true: np.ndarray, risk_pred: np.ndarray, floor: float, elevated_risk: float) -> dict:
-    valid = ~np.isnan(risk_true) & ~np.isnan(risk_pred)
-    err = risk_pred[valid] - risk_true[valid]
-    rt = risk_true[valid]
-    non_floor = rt > floor
-    high = rt >= elevated_risk
+def probability_metrics(P: np.ndarray, y_true) -> dict:
+    """Multiclass probability quality. `P` is (n, 3) in TIERS order.
 
-    mae, rmse = _mae_rmse(err)
-    mae_nf, rmse_nf = _mae_rmse(err[non_floor])
-    mae_hr, rmse_hr = _mae_rmse(err[high])
-    group = {
-        "mae": mae,
-        "rmse": rmse,
-        "mae_non_floor": mae_nf,
-        "rmse_non_floor": rmse_nf,
-        "mae_high_risk": mae_hr,
-        "rmse_high_risk": rmse_hr,
-        "n_non_floor": int(np.sum(non_floor)),
-        "n_high_risk": int(np.sum(high)),
+    Rows with any NaN probability (or an invalid truth) are excluded (`n_excluded`).
+    brier = mean over rows of sum over classes (p - onehot)^2 (range 0..2);
+    log_loss uses probabilities clipped at 1e-12; reliability is one-vs-rest per tier.
+    Critical one-vs-rest ranking quality (PR-AUC, ROC-AUC) is included because the
+    Critical class is rare (~7 %)."""
+    P = np.asarray(P, dtype=float)
+    if P.ndim != 2 or P.shape[1] != len(TIERS):
+        raise ValueError(f"P must have shape (n, {len(TIERS)}), got {P.shape}")
+    yt = _tier_array(y_true)
+    if len(yt) != P.shape[0]:
+        raise ValueError("P and y_true have different lengths")
+    valid = ~np.isnan(P).any(axis=1) & (yt != INVALID_LABEL)
+    n_used = int(np.sum(valid))
+    n_excluded = int(np.sum(~valid))
+
+    group: dict[str, Any] = {
+        "n_used": n_used,
+        "n_excluded": n_excluded,
+        "brier": None,
+        "log_loss": None,
+        "per_class_brier": {t: None for t in TIERS},
+        "reliability": {t: _empty_reliability() for t in TIERS},
+        "critical_pr_auc": None,
+        "critical_roc_auc": None,
+        "mean_max_prob": None,
     }
-    return _finalise_group(group, exclude=("n_non_floor", "n_high_risk"))
+    if n_used == 0:
+        return _finalise_group(group, exclude=("n_used", "n_excluded", "per_class_brier", "reliability"))
+
+    Pv = P[valid]
+    idx = np.asarray([TIER_INDEX[t] for t in yt[valid]], dtype=int)
+    onehot = np.zeros_like(Pv)
+    onehot[np.arange(n_used), idx] = 1.0
+    sq = (Pv - onehot) ** 2
+    group["brier"] = float(np.mean(sq.sum(axis=1)))
+    group["per_class_brier"] = {t: float(np.mean(sq[:, i])) for i, t in enumerate(TIERS)}
+    p_true = np.clip(Pv[np.arange(n_used), idx], LOG_LOSS_CLIP, 1.0)
+    group["log_loss"] = float(-np.mean(np.log(p_true)))
+    group["mean_max_prob"] = float(np.mean(Pv.max(axis=1)))
+    group["reliability"] = {t: _reliability(Pv[:, i], onehot[:, i]) for i, t in enumerate(TIERS)}
+
+    y_crit = onehot[:, TIER_INDEX["Critical"]].astype(int)
+    p_crit = np.clip(Pv[:, TIER_INDEX["Critical"]], 0.0, 1.0)
+    n_pos = int(y_crit.sum())
+    if 0 < n_pos < n_used:
+        group["critical_pr_auc"] = float(average_precision_score(y_crit, p_crit))
+        group["critical_roc_auc"] = float(roc_auc_score(y_crit, p_crit))
+    return _finalise_group(group, exclude=("n_used", "n_excluded", "per_class_brier", "reliability"))
 
 
-def _interval_metrics(risk_true: np.ndarray, lower: np.ndarray, upper: np.ndarray, nominal: float) -> dict:
-    n = len(risk_true)
-    has_int = ~np.isnan(lower) & ~np.isnan(upper)
-    usable = has_int & ~np.isnan(risk_true)
-    covered = (lower[usable] <= risk_true[usable]) & (risk_true[usable] <= upper[usable])
-    coverage = _safe_div(int(np.sum(covered)), int(np.sum(usable)))
-    width = (upper - lower)[has_int]
-    median_width = float(np.median(width)) if width.size else None
-    group = {
-        "nominal_coverage": float(nominal) if nominal is not None else None,
-        "coverage": coverage,
-        "median_width": median_width,
-        "n_with_interval": int(np.sum(has_int)),
-        "fraction_with_interval": _safe_div(int(np.sum(has_int)), n),
+# --------------------------------------------------------------------------- #
+# Escalation / de-escalation and triage
+# --------------------------------------------------------------------------- #
+def escalation_metrics(df: pd.DataFrame) -> dict:
+    """Escalation (currently not Critical, ends Critical) and de-escalation (currently
+    Critical, ends lower) bookkeeping. A non-Critical event is 'flagged' when the
+    forecast is Critical OR its triage action is 'Escalation watch'. Watch-list
+    numbers are None when `triage_action` is absent."""
+    cur = _tier_col(df, "current_tier")
+    fin = _tier_col(df, "final_tier")
+    pred = _tier_col(df, "predicted_final_tier")
+    has_actions = "triage_action" in df.columns
+    actions = _str_col(df, "triage_action")
+    usable = (cur != INVALID_LABEL) & (fin != INVALID_LABEL)
+
+    on_watch = actions == ESCALATION_WATCH_ACTION
+    pred_crit = pred == "Critical"
+    fin_crit = fin == "Critical"
+
+    nc = usable & (cur != "Critical")
+    flagged = nc & (pred_crit | on_watch)
+    n_nc = int(np.sum(nc))
+    n_end_crit = int(np.sum(nc & fin_crit))
+    n_flagged = int(np.sum(flagged))
+    n_caught = int(np.sum(flagged & fin_crit))
+    n_pred_crit = int(np.sum(nc & pred_crit))
+    n_pred_crit_hits = int(np.sum(nc & pred_crit & fin_crit))
+    non_critical_now = {
+        "n_total": n_nc,
+        "n_end_critical": n_end_crit,
+        "n_flagged": n_flagged,
+        "n_caught": n_caught,
+        "recall_of_escalations": _safe_div(n_caught, n_end_crit),
+        "precision_of_flags": _safe_div(n_caught, n_flagged),
+        "n_predicted_critical": n_pred_crit,
+        "n_predicted_critical_hits": n_pred_crit_hits,
+        "watch_list_size": int(np.sum(nc & on_watch)) if has_actions else None,
+        "watch_list_hits": int(np.sum(nc & on_watch & fin_crit)) if has_actions else None,
+        "watch_list_share": _safe_div(int(np.sum(nc & on_watch)), n_nc) if has_actions else None,
     }
-    return _finalise_group(group, exclude=("n_with_interval", "nominal_coverage"))
+    non_critical_now = _finalise_group(
+        non_critical_now,
+        exclude=("n_total", "n_end_critical", "n_flagged", "n_caught", "n_predicted_critical", "n_predicted_critical_hits"),
+    )
+
+    cc = usable & (cur == "Critical")
+    pred_lower = cc & (pred != INVALID_LABEL) & ~pred_crit
+    n_cc = int(np.sum(cc))
+    n_deesc = int(np.sum(cc & ~fin_crit))
+    n_pred_deesc = int(np.sum(pred_lower))
+    n_correct = int(np.sum(pred_lower & ~fin_crit))
+    n_false = int(np.sum(pred_lower & fin_crit))
+    critical_now = {
+        "n_total": n_cc,
+        "n_deescalate": n_deesc,
+        "n_predicted_deescalation": n_pred_deesc,
+        "n_correct_deescalation": n_correct,
+        "n_false_deescalation": n_false,
+        "deescalation_recall": _safe_div(n_correct, n_deesc),
+        "deescalation_precision": _safe_div(n_correct, n_pred_deesc),
+        "false_deescalation_rate": _safe_div(n_false, n_cc - n_deesc),
+    }
+    critical_now = _finalise_group(
+        critical_now,
+        exclude=("n_total", "n_deescalate", "n_predicted_deescalation", "n_correct_deescalation", "n_false_deescalation"),
+    )
+
+    out = {
+        "n_events": int(np.sum(usable)),
+        "non_critical_now": non_critical_now,
+        "critical_now": critical_now,
+        "undefined": [f"non_critical_now.{k}" for k in non_critical_now["undefined"]]
+        + [f"critical_now.{k}" for k in critical_now["undefined"]],
+    }
+    return out
 
 
-def _triage_metrics(actions: np.ndarray, tier_true: np.ndarray) -> dict:
-    n = len(actions)
+def triage_metrics(df: pd.DataFrame) -> Optional[dict]:
+    """Triage action mix and the safety counters. None when `triage_action` is absent."""
+    if "triage_action" not in df.columns:
+        return None
+    actions = _str_col(df, "triage_action")
+    fin = _tier_col(df, "final_tier")
+    n = int(len(actions))
     counts: dict[str, int] = {}
     for a in actions:
         key = "None" if a is None else str(a)
         counts[key] = counts.get(key, 0) + 1
     counts = dict(sorted(counts.items()))
+    shares = {k: (_safe_div(v, n) if n else None) for k, v in counts.items()}
 
     is_auto = actions == AUTO_CLEAR_ACTION
+    is_watch = actions == ESCALATION_WATCH_ACTION
     is_maneuver = actions == MANEUVER_REVIEW_ACTION
+    is_monitor = actions == MONITOR_ACTION
     is_human = np.isin(actions, HUMAN_REVIEW_ACTIONS)
-    crit_true = tier_true == "Critical"
-    n_crit = int(np.sum(crit_true))
-    n_crit_auto = int(np.sum(crit_true & is_auto))
+    fin_crit = fin == "Critical"
+    n_crit = int(np.sum(fin_crit))
+    n_crit_auto = int(np.sum(fin_crit & is_auto))
     group = {
+        "n_events": n,
         "action_counts": counts,
-        "auto_clear_fraction": _safe_div(int(np.sum(is_auto)), n),
-        "true_critical_routed_to_auto_clear_n": n_crit_auto,
-        "true_critical_routed_to_auto_clear_fraction": _safe_div(n_crit_auto, n_crit),
-        "maneuver_review_fraction": _safe_div(int(np.sum(is_maneuver)), n),
-        "human_review_fraction": _safe_div(int(np.sum(is_human)), n),
+        "action_shares": shares,
+        "auto_clear_share": _safe_div(int(np.sum(is_auto)), n),
+        "n_final_critical": n_crit,
+        "n_final_critical_auto_cleared": n_crit_auto,
+        "final_critical_auto_cleared_share": _safe_div(n_crit_auto, n_crit),
+        "n_final_critical_in_watch": int(np.sum(fin_crit & is_watch)),
+        "n_final_critical_in_maneuver_review": int(np.sum(fin_crit & is_maneuver)),
+        "maneuver_review_share": _safe_div(int(np.sum(is_maneuver)), n),
+        "human_review_share": _safe_div(int(np.sum(is_human)), n),
+        "watch_share": _safe_div(int(np.sum(is_watch)), n),
+        "monitor_share": _safe_div(int(np.sum(is_monitor)), n),
     }
-    return _finalise_group(group, exclude=("action_counts", "true_critical_routed_to_auto_clear_n"))
+    return _finalise_group(
+        group,
+        exclude=(
+            "n_events", "action_counts", "action_shares", "n_final_critical", "n_final_critical_auto_cleared",
+            "n_final_critical_in_watch", "n_final_critical_in_maneuver_review",
+        ),
+    )
 
 
-def _classifier_metrics(risk_true: np.ndarray, p_crit: Optional[np.ndarray], critical_risk: float) -> Optional[dict]:
-    if p_crit is None:
-        return None
-    valid = ~np.isnan(p_crit) & ~np.isnan(risk_true)
-    y = (risk_true[valid] >= critical_risk).astype(int)
-    p = np.clip(p_crit[valid], 0.0, 1.0)
-    n_pos = int(np.sum(y))
-    pr_auc: Optional[float] = None
-    brier: Optional[float] = None
-    if y.size > 0:
-        brier = float(brier_score_loss(y, p))
-        if 0 < n_pos < y.size:
-            pr_auc = float(average_precision_score(y, p))
-        elif n_pos == y.size:
-            pr_auc = 1.0  # all positive: every ranking is perfect
-    group = {"pr_auc": pr_auc, "brier": brier, "n_pos": n_pos}
-    return _finalise_group(group, exclude=("n_pos",))
-
-
-def _bootstrap_metrics(
-    event_id: np.ndarray,
-    crit_t: np.ndarray,
-    crit_p: np.ndarray,
-    abs_err: np.ndarray,
-    err_valid: np.ndarray,
-    covered: np.ndarray,
-    int_valid: np.ndarray,
-    n_bootstrap: int,
-    seed: int,
-) -> dict:
-    """Event-level bootstrap: resample events with replacement and recompute the
-    point metrics with per-event multiplicities as weights. Returns 2.5 / 97.5
-    percentiles; None bounds when a metric was undefined in (almost) every
-    resample or when there is nothing to resample."""
-    out: dict[str, dict] = {m: {"lower": None, "upper": None} for m in BOOTSTRAP_METRICS}
-    n = len(event_id)
+# --------------------------------------------------------------------------- #
+# Bootstrap
+# --------------------------------------------------------------------------- #
+def bootstrap_cis(df: pd.DataFrame, n_bootstrap: int = 1000, seed: int = 0) -> dict:
+    """Event bootstrap (rows are events) of critical_recall, critical_precision,
+    macro_f1 and auto_clear_share: 2.5 / 97.5 percentiles over resamples where the
+    metric is defined. Vectorised: resample indices with default_rng(seed).choice,
+    turn them into per-event multiplicities, and use matrix products."""
+    out: dict[str, Any] = {m: {"lower": None, "upper": None, "n_valid_draws": 0} for m in BOOTSTRAP_METRICS}
+    out["n_bootstrap"] = int(n_bootstrap)
+    out["seed"] = int(seed)
+    n = int(len(df))
     if n == 0 or n_bootstrap <= 0:
         return _finalise_bootstrap(out)
 
-    codes, uniques = pd.factorize(pd.Series(event_id), sort=False)
-    n_events = len(uniques)
+    yt = _tier_col(df, "final_tier")
+    yp = _tier_col(df, "predicted_final_tier")
+    T = np.column_stack([(yt == t) for t in TIERS]).astype(float)
+    Pm = np.column_stack([(yp == t) for t in TIERS]).astype(float)
+    TP = T * Pm
+    has_actions = "triage_action" in df.columns
+    auto = (_str_col(df, "triage_action") == AUTO_CLEAR_ACTION).astype(float)
+    crit = TIER_INDEX["Critical"]
+
     rng = np.random.default_rng(seed)
+    samples: dict[str, list[np.ndarray]] = {m: [] for m in BOOTSTRAP_METRICS}
+    chunk = 200
+    for start in range(0, int(n_bootstrap), chunk):
+        b = min(chunk, int(n_bootstrap) - start)
+        draws = rng.choice(n, size=(b, n), replace=True)
+        flat = (draws + (np.arange(b) * n)[:, None]).ravel()
+        W = np.bincount(flat, minlength=b * n).reshape(b, n).astype(float)
+        nt = W @ T
+        npred = W @ Pm
+        tp = W @ TP
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rec = np.where(nt > 0, tp / nt, np.nan)
+            prec = np.where(npred > 0, tp / npred, np.nan)
+            denom = prec + rec
+            f1 = np.where(denom > 0, 2.0 * prec * rec / denom, 0.0)
+        present = (nt > 0) | (npred > 0)
+        f1 = np.where(np.isnan(f1), 0.0, f1)
+        n_present = present.sum(axis=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            macro = np.where(n_present > 0, (f1 * present).sum(axis=1) / n_present, np.nan)
+        samples["critical_recall"].append(rec[:, crit])
+        samples["critical_precision"].append(prec[:, crit])
+        samples["macro_f1"].append(macro)
+        if has_actions:
+            samples["auto_clear_share"].append((W @ auto) / float(n))
 
-    # Per-event sufficient statistics.
-    tp = np.bincount(codes, weights=(crit_t & crit_p).astype(float), minlength=n_events)
-    nt = np.bincount(codes, weights=crit_t.astype(float), minlength=n_events)
-    npred = np.bincount(codes, weights=crit_p.astype(float), minlength=n_events)
-    ae_sum = np.bincount(codes, weights=np.where(err_valid, abs_err, 0.0), minlength=n_events)
-    ae_n = np.bincount(codes, weights=err_valid.astype(float), minlength=n_events)
-    cov_sum = np.bincount(codes, weights=(covered & int_valid).astype(float), minlength=n_events)
-    cov_n = np.bincount(codes, weights=int_valid.astype(float), minlength=n_events)
-
-    samples = {m: [] for m in BOOTSTRAP_METRICS}
-    for _ in range(int(n_bootstrap)):
-        draw = rng.integers(0, n_events, size=n_events)
-        w = np.bincount(draw, minlength=n_events).astype(float)
-        d_nt = float(w @ nt)
-        d_np = float(w @ npred)
-        d_tp = float(w @ tp)
-        if d_nt > 0:
-            samples["critical_recall"].append(d_tp / d_nt)
-        if d_np > 0:
-            samples["critical_precision"].append(d_tp / d_np)
-        d_aen = float(w @ ae_n)
-        if d_aen > 0:
-            samples["mae"].append(float(w @ ae_sum) / d_aen)
-        d_cn = float(w @ cov_n)
-        if d_cn > 0:
-            samples["coverage"].append(float(w @ cov_sum) / d_cn)
-
-    for m, vals in samples.items():
-        if len(vals) >= 2:
-            lo, hi = np.percentile(np.asarray(vals, dtype=float), [2.5, 97.5])
-            out[m] = {"lower": float(lo), "upper": float(hi)}
+    for m in BOOTSTRAP_METRICS:
+        if not samples[m]:
+            continue
+        vals = np.concatenate(samples[m])
+        vals = vals[~np.isnan(vals)]
+        out[m]["n_valid_draws"] = int(vals.size)
+        if vals.size >= 2:
+            lo, hi = np.percentile(vals, [2.5, 97.5])
+            out[m]["lower"], out[m]["upper"] = float(lo), float(hi)
     return _finalise_bootstrap(out)
 
 
@@ -427,91 +596,171 @@ def _finalise_bootstrap(out: dict) -> dict:
     return out
 
 
-def _view_metrics(df: pd.DataFrame, cfg: dict, n_bootstrap: int, seed: int) -> dict:
-    critical_risk = float(_get(cfg, ("thresholds", "critical_risk"), DEFAULT_CRITICAL_RISK))
-    elevated_risk = float(_get(cfg, ("thresholds", "elevated_risk"), DEFAULT_ELEVATED_RISK))
-    floor = float(_get(cfg, ("model", "target_floor"), DEFAULT_TARGET_FLOOR))
-    nominal = _get(cfg, ("conformal", "coverage"), DEFAULT_COVERAGE)
-
-    risk_true = _float_col(df, "risk_true")
-    risk_pred = _float_col(df, "risk_log10_pred")
-    lower = _float_col(df, "risk_log10_lower")
-    upper = _float_col(df, "risk_log10_upper")
-    tier_true = _tier_array(df["risk_tier_true"]) if "risk_tier_true" in df.columns else np.full(len(df), INVALID_LABEL, dtype=object)
-    tier_pred = _tier_array(df["risk_tier"]) if "risk_tier" in df.columns else np.full(len(df), INVALID_LABEL, dtype=object)
-    actions = _str_col(df, "triage_action")
-    p_crit = _float_col(df, "p_pc_critical") if "p_pc_critical" in df.columns else None
-    event_id = event_group_codes(df)
-
-    crit_t = tier_true == "Critical"
-    crit_p = tier_pred == "Critical"
-    err_valid = ~np.isnan(risk_true) & ~np.isnan(risk_pred)
-    abs_err = np.where(err_valid, np.abs(risk_pred - risk_true), 0.0)
-    int_valid = ~np.isnan(lower) & ~np.isnan(upper) & ~np.isnan(risk_true)
-    covered = int_valid & (lower <= risk_true) & (risk_true <= upper)
-
-    return {
-        "n_rows": int(len(df)),
-        "n_events": int(pd.Series(event_id).nunique()) if len(df) else 0,
-        "n_critical_true": int(np.sum(crit_t)),
-        "tier": tier_metrics(tier_true, tier_pred),
-        "pc_only": _pc_only_metrics(risk_true, risk_pred, critical_risk),
-        "regression": _regression_metrics(risk_true, risk_pred, floor, elevated_risk),
-        "interval": _interval_metrics(risk_true, lower, upper, nominal),
-        "triage": _triage_metrics(actions, tier_true),
-        "classifier": _classifier_metrics(risk_true, p_crit, critical_risk),
-        "bootstrap": _bootstrap_metrics(
-            event_id, crit_t, crit_p, abs_err, err_valid, covered, int_valid, n_bootstrap, seed
-        ),
+# --------------------------------------------------------------------------- #
+# Breakdowns
+# --------------------------------------------------------------------------- #
+def _group_stats(yt: np.ndarray, yp: np.ndarray) -> dict:
+    cm = classification_metrics(yt, yp)
+    group = {
+        "n": int(len(yt)),
+        "n_critical": int(np.sum(yt == "Critical")),
+        "n_predicted_critical": int(np.sum(yp == "Critical")),
+        "critical_recall": cm["critical_recall"],
+        "critical_precision": cm["critical_precision"],
+        "critical_f2": cm["critical_f2"],
+        "macro_f1": cm["macro_f1"],
+        "accuracy": cm["accuracy"],
     }
+    return _finalise_group(group, exclude=("n", "n_critical", "n_predicted_critical"))
+
+
+def breakdown_by(df: pd.DataFrame, column: str, min_rows: int = 20) -> dict:
+    """Per-group classification stats. Missing group values become 'missing'; groups
+    with fewer than `min_rows` rows are merged into 'other'. Empty dict when the
+    column is absent or the frame is empty."""
+    if column not in df.columns or len(df) == 0:
+        return {}
+    keys = _str_col(df, column)
+    keys = np.asarray([("missing" if k is None else k) for k in keys], dtype=object)
+    yt = _tier_col(df, "final_tier")
+    yp = _tier_col(df, "predicted_final_tier")
+    counts = pd.Series(keys).value_counts()
+    small = set(counts[counts < int(min_rows)].index.tolist())
+    groups = np.asarray([("other" if k in small else k) for k in keys], dtype=object)
+    names = sorted(set(groups.tolist()), key=lambda g: (g == "other", g))
+    out: dict[str, dict] = {}
+    for g in names:
+        mask = groups == g
+        stats = _group_stats(yt[mask], yp[mask])
+        if g == "other":
+            stats["merged_groups"] = sorted(small)
+        out[g] = stats
+    return out
+
+
+def _lead_time_bucket(ttca: np.ndarray) -> np.ndarray:
+    out = np.full(len(ttca), LEAD_TIME_OTHER, dtype=object)
+    for lo, hi, label in zip(LEAD_TIME_EDGES[:-1], LEAD_TIME_EDGES[1:], LEAD_TIME_LABELS):
+        out[(ttca >= lo) & (ttca < hi)] = label
+    return out
+
+
+def lead_time_breakdown(df: pd.DataFrame) -> dict:
+    """Stats per lead-time bucket of the latest snapshot's `time_to_tca_days`:
+    [2,3), [3,4), [4,5), [5,inf); rows below 2 days or missing go to '<2_or_missing'.
+    Buckets partition the rows (no merging)."""
+    if len(df) == 0 or "time_to_tca_days" not in df.columns:
+        return {}
+    tmp = pd.DataFrame({"_lead_bucket": _lead_time_bucket(_float_col(df, "time_to_tca_days"))})
+    for col in ("final_tier", "predicted_final_tier"):
+        if col in df.columns:
+            tmp[col] = df[col].tolist()
+    raw = breakdown_by(tmp, "_lead_bucket", min_rows=0)
+    ordered = {label: raw[label] for label in LEAD_TIME_LABELS + [LEAD_TIME_OTHER] if label in raw}
+    return ordered
+
+
+# --------------------------------------------------------------------------- #
+# Conformal prediction sets (optional column)
+# --------------------------------------------------------------------------- #
+def _prediction_set_metrics(df: pd.DataFrame, nominal: float) -> Optional[dict]:
+    if "prediction_set" not in df.columns:
+        return None
+    fin = _tier_col(df, "final_tier")
+    sets = df["prediction_set"].tolist()
+    sizes, covered = [], []
+    for s, t in zip(sets, fin):
+        if _is_missing(s) or t == INVALID_LABEL:
+            continue
+        items = [str(x) for x in list(s)]
+        sizes.append(len(items))
+        covered.append(t in items)
+    n_used = len(sizes)
+    group = {
+        "n_used": n_used,
+        "coverage_nominal": float(nominal) if nominal is not None else None,
+        "coverage_empirical": _safe_div(int(np.sum(covered)), n_used),
+        "avg_set_size": (float(np.mean(sizes)) if n_used else None),
+        "singleton_share": _safe_div(int(np.sum(np.asarray(sizes) == 1)), n_used) if n_used else None,
+        "empty_share": _safe_div(int(np.sum(np.asarray(sizes) == 0)), n_used) if n_used else None,
+    }
+    return _finalise_group(group, exclude=("n_used", "coverage_nominal"))
 
 
 # --------------------------------------------------------------------------- #
 # Public report
 # --------------------------------------------------------------------------- #
-def evaluate_predictions(
+def _subset_report(sub: pd.DataFrame, cfg: dict, n_bootstrap: int, seed: int) -> dict:
+    yt = _tier_col(sub, "final_tier")
+    yp = _tier_col(sub, "predicted_final_tier")
+    nominal = _get(cfg, ("conformal_sets", "coverage"), DEFAULT_COVERAGE)
+    return {
+        "n_events": int(len(sub)),
+        "class_counts": _class_counts(yt),
+        "predicted_class_counts": _class_counts(yp),
+        "classification": classification_metrics(yt, yp),
+        "probability": probability_metrics(_prob_matrix(sub), yt),
+        "escalation": escalation_metrics(sub),
+        "triage": triage_metrics(sub),
+        "prediction_sets": _prediction_set_metrics(sub, nominal),
+        "bootstrap": bootstrap_cis(sub, n_bootstrap=n_bootstrap, seed=seed),
+    }
+
+
+def evaluate_forecasts(
     df: pd.DataFrame,
     cfg: dict,
     *,
-    n_bootstrap: int = 200,
+    n_bootstrap: int = 1000,
     seed: int = 0,
     scope: dict | None = None,
 ) -> dict:
-    """Full JSON-serialisable metrics dict over the four standard views.
+    """Full JSON-serialisable evaluation of a latest-snapshot forecast frame.
 
-    See the module docstring for view definitions and conventions. `scope` is
-    passed through verbatim (after conversion to JSON-safe types) so callers can
-    label the result (model name, dataset id, ...).
-    """
+    `df` must hold one row per event with `final_tier` (truth), `predicted_final_tier`,
+    `p_safe` / `p_elevated` / `p_critical`, `current_tier`, `is_trivial`, and
+    optionally `triage_action`, `object_type`, `time_to_tca_days`, `prediction_set`.
+    If `is_latest_snapshot` is present, only those rows are used. When `is_trivial`
+    is absent every event is treated as a real forecast (and a note is added).
+
+    Returns {'scope', 'n_events', 'n_trivial', 'n_real_forecast', 'class_counts',
+    'subsets': {all_usable | trivial | real_forecast: {...}},
+    'by_object_type' / 'by_lead_time' / 'by_current_tier': {real_forecast: ..., all_usable: ...},
+    'notes': [...]}. Every undefined metric is None and listed under the enclosing
+    group's 'undefined'; json.dumps(result, allow_nan=False) always passes."""
+    notes: list[str] = []
+    if "is_latest_snapshot" in df.columns:
+        df = latest_snapshot_view(df)
     df = df.reset_index(drop=True)
-    floor = float(_get(cfg, ("model", "target_floor"), DEFAULT_TARGET_FLOOR))
-    horizon_min = float(_get(cfg, ("split", "test_horizon_min_days"), 0.0))
+    n = int(len(df))
+    if "is_trivial" in df.columns:
+        trivial = _bool_col(df, "is_trivial", default=False)
+    else:
+        trivial = np.zeros(n, dtype=bool)
+        notes.append("is_trivial column absent: every event treated as a real forecast")
+    yt = _tier_col(df, "final_tier")
 
-    risk_true = _float_col(df, "risk_true")
-    tier_true = _tier_array(df["risk_tier_true"]) if "risk_tier_true" in df.columns else np.full(len(df), INVALID_LABEL, dtype=object)
-    status = _str_col(df, "prediction_status")
-    ttca = _float_col(df, "time_to_tca_days")
-    event_id = pd.Series(event_group_codes(df), index=df.index)
-
-    crit_rows = tier_true == "Critical"
-    counts = {
-        "n_rows": int(len(df)),
-        "n_events": int(event_id.nunique()) if len(df) else 0,
-        "n_critical_rows": int(np.sum(crit_rows)),
-        "n_critical_events": int(event_id[crit_rows].nunique()) if len(df) else 0,
-        "n_elevated_rows": int(np.sum(tier_true == "Elevated")),
-        "n_floor_rows": int(np.sum(~np.isnan(risk_true) & (risk_true <= floor))),
-        "n_invalid_rows": int(np.sum(status == "invalid")),
+    subsets_df = {
+        "all_usable": df,
+        "trivial": df[trivial],
+        "real_forecast": df[~trivial],
     }
+    subsets = {name: _subset_report(sub, cfg, n_bootstrap, seed) for name, sub in subsets_df.items()}
 
-    horizon = df[ttca >= horizon_min] if len(df) else df
+    def both(fn, *args) -> dict:
+        return {"real_forecast": fn(subsets_df["real_forecast"], *args), "all_usable": fn(subsets_df["all_usable"], *args)}
+
     result = {
         "scope": to_jsonable(scope) if scope else {},
-        "counts": counts,
-        "row_level": _view_metrics(df, cfg, n_bootstrap, seed),
-        "latest_cdm": _view_metrics(latest_cdm_view(df), cfg, n_bootstrap, seed),
-        "horizon_slice": _view_metrics(horizon, cfg, n_bootstrap, seed),
-        "horizon_latest_cdm": _view_metrics(latest_cdm_view(horizon), cfg, n_bootstrap, seed),
+        "n_events": n,
+        "n_trivial": int(np.sum(trivial)),
+        "n_real_forecast": int(np.sum(~trivial)),
+        "class_counts": _class_counts(yt),
+        "subsets": subsets,
+        "by_object_type": both(breakdown_by, "object_type", 20),
+        "by_lead_time": both(lead_time_breakdown),
+        "by_current_tier": both(breakdown_by, "current_tier", 0),
+        "notes": notes,
     }
     return to_jsonable(result)
 
@@ -520,98 +769,118 @@ def evaluate_predictions(
 # Model comparison and illustrative cases
 # --------------------------------------------------------------------------- #
 COMPARE_COLUMNS: list[tuple[str, tuple[str, ...]]] = [
-    ("critical_recall", ("tier", "critical_recall")),
-    ("critical_precision", ("tier", "critical_precision")),
-    ("critical_f2", ("tier", "critical_f2")),
-    ("pc_only_critical_recall", ("pc_only", "critical_recall")),
-    ("pc_only_critical_precision", ("pc_only", "critical_precision")),
-    ("macro_f1", ("tier", "macro_f1")),
-    ("mae", ("regression", "mae")),
-    ("mae_non_floor", ("regression", "mae_non_floor")),
-    ("mae_high_risk", ("regression", "mae_high_risk")),
-    ("coverage", ("interval", "coverage")),
-    ("median_width", ("interval", "median_width")),
-    ("auto_clear_fraction", ("triage", "auto_clear_fraction")),
-    ("true_critical_routed_to_auto_clear_n", ("triage", "true_critical_routed_to_auto_clear_n")),
+    ("n_events", ("n_events",)),
+    ("critical_recall", ("classification", "critical_recall")),
+    ("critical_precision", ("classification", "critical_precision")),
+    ("critical_f2", ("classification", "critical_f2")),
+    ("elevated_or_above_f2", ("classification", "elevated_or_above_f2")),
+    ("macro_f1", ("classification", "macro_f1")),
+    ("accuracy", ("classification", "accuracy")),
+    ("brier", ("probability", "brier")),
+    ("log_loss", ("probability", "log_loss")),
+    ("auto_clear_share", ("triage", "auto_clear_share")),
+    ("n_final_critical_auto_cleared", ("triage", "n_final_critical_auto_cleared")),
+    ("watch_share", ("triage", "watch_share")),
+    ("escalation_recall", ("escalation", "non_critical_now", "recall_of_escalations")),
+    ("escalation_flag_precision", ("escalation", "non_critical_now", "precision_of_flags")),
 ]
 
 
-def compare_models(results: dict[str, dict], view: str = "latest_cdm") -> pd.DataFrame:
-    """Side-by-side table of key metrics. Rows = model names (index), columns =
-    key metrics pulled from results[name][view]; anything missing -> None."""
+def compare_models(results: dict[str, dict], subset: str = "real_forecast") -> pd.DataFrame:
+    """One row per model (index) with the key metrics of results[name]['subsets'][subset];
+    anything missing is None."""
     rows = []
     for name, res in results.items():
-        view_metrics = (res or {}).get(view) or {}
+        sub = (((res or {}).get("subsets") or {}).get(subset)) or {}
         row: dict[str, Any] = {"model": name}
         for col, path in COMPARE_COLUMNS:
-            row[col] = _get(view_metrics, path, None)
+            row[col] = _get(sub, path, None)
         rows.append(row)
     cols = ["model"] + [c for c, _ in COMPARE_COLUMNS]
-    out = pd.DataFrame(rows, columns=cols, dtype=object)
-    out = out.set_index("model")
+    out = pd.DataFrame(rows, columns=cols, dtype=object).set_index("model")
     return out.where(pd.notna(out), None)
 
 
 def _rows_to_dicts(sub: pd.DataFrame, k: int) -> list[dict]:
-    sub = sub.head(k)
+    sub = sub.drop(columns=["_sort", "_sort2"], errors="ignore").head(k)
     return [to_jsonable(rec) for rec in sub.to_dict(orient="records")]
 
 
 def find_illustrative_cases(df: pd.DataFrame, k: int = 3) -> dict:
-    """Pick up to k rows per failure category so the report always has examples.
+    """Up to k JSON-safe rows per category so the report always has examples.
 
-    - missed_critical:      true Critical, predicted tier not Critical
-                             (worst first: largest under-prediction of risk)
-    - false_alarm_critical: predicted Critical, true tier not Critical
-                             (worst first: largest over-prediction of risk)
-    - uncertain:            triage_action == 'Human review', widest intervals first
-    - invalid:              prediction_status == 'invalid'
+    - missed_critical:      final Critical, not predicted Critical, not on the watch list
+                             (lowest p_critical first)
+    - caught_by_watch:      final Critical, not predicted Critical, triage 'Escalation watch'
+    - false_alarm_critical: predicted Critical, final not Critical (highest p_critical first)
+    - false_deescalation:   current Critical, predicted lower, final Critical
+    - uncertain:            largest prediction_set (then smallest max probability), or
+                             smallest max probability when no sets are available
     """
     df = df.reset_index(drop=True)
-    n = len(df)
-    tier_true = _tier_array(df["risk_tier_true"]) if "risk_tier_true" in df.columns else np.full(n, INVALID_LABEL, dtype=object)
-    tier_pred = _tier_array(df["risk_tier"]) if "risk_tier" in df.columns else np.full(n, INVALID_LABEL, dtype=object)
-    risk_true = _float_col(df, "risk_true")
-    risk_pred = _float_col(df, "risk_log10_pred")
-    lower = _float_col(df, "risk_log10_lower")
-    upper = _float_col(df, "risk_log10_upper")
+    fin = _tier_col(df, "final_tier")
+    pred = _tier_col(df, "predicted_final_tier")
+    cur = _tier_col(df, "current_tier")
     actions = _str_col(df, "triage_action")
-    status = _str_col(df, "prediction_status")
+    P = _prob_matrix(df)
+    p_crit = P[:, TIER_INDEX["Critical"]] if len(df) else np.zeros(0)
+    p_crit_sort = np.where(np.isnan(p_crit), 0.5, p_crit)
+    max_p = np.nanmax(np.where(np.isnan(P), -np.inf, P), axis=1) if len(df) else np.zeros(0)
+    max_p = np.where(np.isfinite(max_p), max_p, 2.0)  # rows without probabilities sort last
 
-    err = risk_pred - risk_true  # positive = over-prediction
-    err_sort = np.where(np.isnan(err), 0.0, err)
+    fin_crit = fin == "Critical"
+    pred_crit = pred == "Critical"
+    on_watch = actions == ESCALATION_WATCH_ACTION
 
-    missed_mask = (tier_true == "Critical") & (tier_pred != "Critical")
-    missed = df[missed_mask].assign(_sort=err_sort[missed_mask]).sort_values("_sort", kind="mergesort")
+    missed_mask = fin_crit & ~pred_crit & ~on_watch
+    missed = df[missed_mask].assign(_sort=p_crit_sort[missed_mask]).sort_values("_sort", kind="mergesort")
 
-    fa_mask = (tier_pred == "Critical") & (tier_true != "Critical")
-    false_alarm = df[fa_mask].assign(_sort=-err_sort[fa_mask]).sort_values("_sort", kind="mergesort")
+    watch_mask = fin_crit & ~pred_crit & on_watch
+    caught = df[watch_mask].assign(_sort=p_crit_sort[watch_mask]).sort_values("_sort", kind="mergesort")
 
-    width = upper - lower
-    unc_mask = actions == HUMAN_REVIEW_ACTION
-    uncertain = df[unc_mask].assign(_sort=np.where(np.isnan(width[unc_mask]), -np.inf, -width[unc_mask]))
-    uncertain = uncertain.sort_values("_sort", kind="mergesort")
+    fa_mask = pred_crit & ~fin_crit & (fin != INVALID_LABEL)
+    false_alarm = df[fa_mask].assign(_sort=-p_crit_sort[fa_mask]).sort_values("_sort", kind="mergesort")
 
-    invalid = df[status == "invalid"]
+    fd_mask = (cur == "Critical") & (pred != INVALID_LABEL) & ~pred_crit & fin_crit
+    false_deesc = df[fd_mask].assign(_sort=p_crit_sort[fd_mask]).sort_values("_sort", kind="mergesort")
 
-    def strip(sub: pd.DataFrame) -> pd.DataFrame:
-        return sub.drop(columns=["_sort"], errors="ignore")
+    has_probs = ~np.isnan(P).any(axis=1) if len(df) else np.zeros(0, dtype=bool)
+    if "prediction_set" in df.columns:
+        sizes = np.asarray(
+            [(-1 if _is_missing(s) else len(list(s))) for s in df["prediction_set"].tolist()], dtype=float
+        )
+        unc_mask = (sizes >= 0) | has_probs
+        uncertain = (
+            df[unc_mask]
+            .assign(_sort=-sizes[unc_mask], _sort2=max_p[unc_mask])
+            .sort_values(["_sort", "_sort2"], kind="mergesort")
+        )
+    else:
+        uncertain = df[has_probs].assign(_sort=max_p[has_probs]).sort_values("_sort", kind="mergesort")
 
     return {
-        "missed_critical": _rows_to_dicts(strip(missed), k),
-        "false_alarm_critical": _rows_to_dicts(strip(false_alarm), k),
-        "uncertain": _rows_to_dicts(strip(uncertain), k),
-        "invalid": _rows_to_dicts(strip(invalid), k),
+        "missed_critical": _rows_to_dicts(missed, k),
+        "caught_by_watch": _rows_to_dicts(caught, k),
+        "false_alarm_critical": _rows_to_dicts(false_alarm, k),
+        "false_deescalation": _rows_to_dicts(false_deesc, k),
+        "uncertain": _rows_to_dicts(uncertain, k),
     }
 
 
 __all__ = [
-    "latest_cdm_view",
-    "evaluate_predictions",
-    "tier_metrics",
+    "TIERS",
+    "INVALID_LABEL",
+    "SUBSET_NAMES",
+    "latest_snapshot_view",
+    "classification_metrics",
+    "probability_metrics",
+    "escalation_metrics",
+    "triage_metrics",
+    "bootstrap_cis",
+    "breakdown_by",
+    "lead_time_breakdown",
+    "evaluate_forecasts",
     "compare_models",
     "find_illustrative_cases",
     "to_jsonable",
-    "CONFUSION_LABELS",
-    "TIER_LABELS",
 ]

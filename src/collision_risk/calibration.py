@@ -69,230 +69,6 @@ def finite_sample_quantile(scores: np.ndarray, coverage: float) -> float | None:
     return float(s_sorted[k - 1])
 
 
-class SplitConformalCalibrator:
-    """Symmetric split-conformal intervals with one score per event.
-
-    Per-event nonconformity score = max |y_true - y_pred| over the event's rows
-    (rows where either value is NaN are ignored). The interval half-width
-    ``q_hat`` is the finite-sample corrected quantile of those event scores.
-    """
-
-    def __init__(self, coverage: float = 0.9, min_events: int = 30) -> None:
-        if not (0.0 < coverage < 1.0):
-            raise ValueError(f"coverage must be in (0, 1), got {coverage}")
-        if min_events < 1:
-            raise ValueError("min_events must be >= 1")
-        self.coverage = float(coverage)
-        self.min_events = int(min_events)
-        self.status: str = STATUS_UNFITTED
-        self.q_hat: float | None = None
-        self.n_events: int = 0
-        self.n_rows: int = 0
-
-    # -- fitting ------------------------------------------------------------ #
-    def fit(
-        self,
-        y_true: Sequence[float] | np.ndarray | pd.Series,
-        y_pred: Sequence[float] | np.ndarray | pd.Series,
-        event_ids: Sequence[Any] | np.ndarray | pd.Series,
-    ) -> "SplitConformalCalibrator":
-        yt = _as_float_array(y_true)
-        yp = _as_float_array(y_pred)
-        ev = np.asarray(event_ids)
-        if not (yt.shape == yp.shape == ev.shape):
-            raise ValueError(
-                f"shape mismatch: y_true {yt.shape}, y_pred {yp.shape}, event_ids {ev.shape}"
-            )
-
-        valid = ~(np.isnan(yt) | np.isnan(yp))
-        resid = np.abs(yt[valid] - yp[valid])
-        ev_valid = ev[valid]
-        self.n_rows = int(valid.sum())
-
-        if self.n_rows == 0:
-            self.n_events = 0
-            self.q_hat = None
-            self.status = STATUS_INSUFFICIENT
-            return self
-
-        per_event = (
-            pd.Series(resid)
-            .groupby(pd.Series(ev_valid).to_numpy(), sort=False)
-            .max()
-            .to_numpy(dtype="float64")
-        )
-        self.n_events = int(per_event.size)
-
-        if self.n_events < self.min_events:
-            self.q_hat = None
-            self.status = STATUS_INSUFFICIENT
-            return self
-
-        q = finite_sample_quantile(per_event, self.coverage)
-        if q is None:
-            self.q_hat = None
-            self.status = STATUS_INSUFFICIENT
-        else:
-            self.q_hat = float(q)
-            self.status = STATUS_OK
-        return self
-
-    # -- prediction --------------------------------------------------------- #
-    def predict_interval(
-        self, y_pred: Sequence[float] | np.ndarray | pd.Series
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Return ``(lower, upper)`` arrays aligned with ``y_pred``.
-
-        NaN in both bounds wherever the calibrator is not ``ok`` or the point
-        prediction itself is NaN. A finite interval is never fabricated.
-        """
-        yp = _as_float_array(y_pred)
-        lower = np.full(yp.shape, np.nan, dtype="float64")
-        upper = np.full(yp.shape, np.nan, dtype="float64")
-        if self.status != STATUS_OK or self.q_hat is None:
-            return lower, upper
-        ok = ~np.isnan(yp)
-        lower[ok] = yp[ok] - self.q_hat
-        upper[ok] = yp[ok] + self.q_hat
-        return lower, upper
-
-    # -- (de)serialisation -------------------------------------------------- #
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "type": "split_conformal",
-            "coverage": self.coverage,
-            "min_events": self.min_events,
-            "status": self.status,
-            "q_hat": None if self.q_hat is None else float(self.q_hat),
-            "n_events": int(self.n_events),
-            "n_rows": int(self.n_rows),
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "SplitConformalCalibrator":
-        obj = cls(coverage=float(d["coverage"]), min_events=int(d.get("min_events", 30)))
-        obj.status = str(d.get("status", STATUS_UNFITTED))
-        q = d.get("q_hat")
-        obj.q_hat = None if q is None else float(q)
-        obj.n_events = int(d.get("n_events", 0))
-        obj.n_rows = int(d.get("n_rows", 0))
-        if obj.status == STATUS_OK and obj.q_hat is None:
-            # Inconsistent payload: never allow an 'ok' calibrator without a width.
-            obj.status = STATUS_INSUFFICIENT
-        return obj
-
-    def __repr__(self) -> str:  # pragma: no cover - cosmetic
-        return (
-            f"SplitConformalCalibrator(coverage={self.coverage}, status={self.status!r}, "
-            f"q_hat={self.q_hat}, n_events={self.n_events}, n_rows={self.n_rows})"
-        )
-
-
-def empirical_coverage(
-    y_true: Sequence[float] | np.ndarray | pd.Series,
-    lower: Sequence[float] | np.ndarray | pd.Series,
-    upper: Sequence[float] | np.ndarray | pd.Series,
-) -> dict[str, Any]:
-    """Observed coverage and width of intervals.
-
-    Only rows where ``y_true``, ``lower`` and ``upper`` are all finite count.
-    Returns ``coverage`` and ``median_width`` as ``None`` when no such rows exist.
-    """
-    yt = _as_float_array(y_true)
-    lo = _as_float_array(lower)
-    hi = _as_float_array(upper)
-    if not (yt.shape == lo.shape == hi.shape):
-        raise ValueError("y_true, lower and upper must have the same shape")
-    has_interval = ~(np.isnan(lo) | np.isnan(hi))
-    usable = has_interval & ~np.isnan(yt)
-    n_usable = int(usable.sum())
-    out: dict[str, Any] = {
-        "coverage": None,
-        "median_width": None,
-        "n_rows": int(yt.size),
-        "n_with_interval": int(has_interval.sum()),
-    }
-    if n_usable == 0:
-        return out
-    covered = (lo[usable] <= yt[usable]) & (yt[usable] <= hi[usable])
-    out["coverage"] = float(covered.mean())
-    out["median_width"] = float(np.median(hi[usable] - lo[usable]))
-    return out
-
-
-# --------------------------------------------------------------------------- #
-# classifier calibration
-# --------------------------------------------------------------------------- #
-class SigmoidCalibrator:
-    """Platt scaling: ``p = sigmoid(a * score + b)``.
-
-    The logistic regression is fitted on the RAW classifier score (not its
-    logit). Rationale: the score fed in is whatever the upstream classifier
-    emits (a margin, a probability, or a boosted raw score); fitting on the raw
-    value keeps the mapping monotone and avoids ``logit(0)``/``logit(1)``
-    blow-ups when the upstream model is over-confident. ``C`` is set very large
-    so regularisation has no practical effect.
-    """
-
-    def __init__(self, C: float = 1e6) -> None:
-        self.C = float(C)
-        self.a: float | None = None  # slope
-        self.b: float | None = None  # intercept
-        self.n: int = 0
-        self.n_pos: int = 0
-
-    @property
-    def fitted(self) -> bool:
-        return self.a is not None and self.b is not None
-
-    def fit(self, scores, y) -> "SigmoidCalibrator":
-        s = _as_float_array(scores)
-        yy = np.asarray(y).astype(int).ravel()
-        if s.shape != yy.shape:
-            raise ValueError("scores and y must have the same shape")
-        ok = ~np.isnan(s)
-        s, yy = s[ok], yy[ok]
-        self.n = int(s.size)
-        self.n_pos = int(yy.sum())
-        if self.n_pos == 0 or self.n_pos == self.n:
-            raise ValueError("SigmoidCalibrator needs both classes present to fit")
-        lr = LogisticRegression(C=self.C, solver="lbfgs", max_iter=10_000)
-        lr.fit(s.reshape(-1, 1), yy)
-        self.a = float(lr.coef_[0, 0])
-        self.b = float(lr.intercept_[0])
-        return self
-
-    def predict_proba(self, scores) -> np.ndarray:
-        if not self.fitted:
-            raise RuntimeError("SigmoidCalibrator is not fitted")
-        s = _as_float_array(scores)
-        z = self.a * s + self.b
-        # numerically stable sigmoid; NaN propagates as NaN
-        with np.errstate(over="ignore", invalid="ignore"):
-            p = np.where(z >= 0, 1.0 / (1.0 + np.exp(-z)), np.exp(z) / (1.0 + np.exp(z)))
-        p = np.where(np.isnan(s), np.nan, p)
-        return p.astype("float64")
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "type": "sigmoid",
-            "C": self.C,
-            "a": self.a,
-            "b": self.b,
-            "n": self.n,
-            "n_pos": self.n_pos,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "SigmoidCalibrator":
-        obj = cls(C=float(d.get("C", 1e6)))
-        obj.a = None if d.get("a") is None else float(d["a"])
-        obj.b = None if d.get("b") is None else float(d["b"])
-        obj.n = int(d.get("n", 0))
-        obj.n_pos = int(d.get("n_pos", 0))
-        return obj
-
-
 class IsotonicCalibrator:
     """Monotone non-parametric calibration via ``IsotonicRegression``.
 
@@ -369,174 +145,135 @@ class IsotonicCalibrator:
 # --------------------------------------------------------------------------- #
 # classifier diagnostics
 # --------------------------------------------------------------------------- #
-def classifier_metrics(y_true, p) -> dict[str, Any]:
-    """PR-AUC and Brier score for a probabilistic binary classifier.
 
-    Rows with NaN probability are dropped. When there are no positives (or no
-    rows) the metrics are ``None`` and ``undefined`` is ``True`` -- never NaN.
-    """
-    yy = np.asarray(y_true).astype(float).ravel()
-    pp = _as_float_array(p)
-    if yy.shape != pp.shape:
-        raise ValueError("y_true and p must have the same shape")
-    ok = ~(np.isnan(pp) | np.isnan(yy))
-    yy, pp = yy[ok].astype(int), pp[ok]
-    n = int(yy.size)
-    n_pos = int(yy.sum())
-    out: dict[str, Any] = {
-        "pr_auc": None,
-        "brier": None,
-        "n_pos": n_pos,
-        "n": n,
-        "undefined": True,
-    }
-    if n == 0 or n_pos == 0:
+
+# =========================================================================== #
+# Final-tier task: multiclass calibration, decision rule, conformal prediction sets
+# =========================================================================== #
+class MulticlassIsotonicCalibrator:
+    """Per-class one-vs-rest isotonic calibration on out-of-fold probabilities, renormalised to sum to 1."""
+
+    def __init__(self) -> None:
+        self.calibrators: list[IsotonicCalibrator] = []
+
+    def fit(self, P: np.ndarray, y_idx: np.ndarray) -> "MulticlassIsotonicCalibrator":
+        P = np.asarray(P, float); y_idx = np.asarray(y_idx)
+        ok = np.isfinite(P).all(axis=1)
+        self.calibrators = []
+        for k in range(P.shape[1]):
+            self.calibrators.append(IsotonicCalibrator().fit(P[ok, k], (y_idx[ok] == k).astype(int)))
+        return self
+
+    def predict_proba(self, P: np.ndarray) -> np.ndarray:
+        P = np.asarray(P, float)
+        out = np.full_like(P, np.nan)
+        ok = np.isfinite(P).all(axis=1)
+        if ok.any():
+            Q = np.column_stack([c.predict_proba(P[ok, k]) for k, c in enumerate(self.calibrators)])
+            Q = np.clip(Q, 1e-6, 1.0)
+            out[ok] = Q / Q.sum(axis=1, keepdims=True)
         return out
-    out["brier"] = float(brier_score_loss(yy, np.clip(pp, 0.0, 1.0)))
-    if n_pos == n:
-        # all positives: PR-AUC is trivially 1 but carries no information
-        out["pr_auc"] = 1.0
-    else:
-        out["pr_auc"] = float(average_precision_score(yy, pp))
-    out["undefined"] = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"type": "multiclass_isotonic", "per_class": [c.to_dict() for c in self.calibrators]}
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "MulticlassIsotonicCalibrator":
+        obj = cls()
+        obj.calibrators = [IsotonicCalibrator.from_dict(x) for x in d["per_class"]]
+        return obj
+
+
+def apply_decision_rule(P: np.ndarray, t_crit: float, t_elev: float) -> np.ndarray:
+    """Critical if P(C) >= t_crit; else Elevated if P(E)+P(C) >= t_elev; else Safe. NaN rows -> None."""
+    P = np.asarray(P, float)
+    out = np.full(len(P), None, dtype=object)
+    ok = np.isfinite(P).all(axis=1)
+    crit = ok & (P[:, 2] >= t_crit)
+    elev = ok & ~crit & ((P[:, 1] + P[:, 2]) >= t_elev)
+    safe = ok & ~crit & ~elev
+    out[crit] = "Critical"; out[elev] = "Elevated"; out[safe] = "Safe"
     return out
 
 
-def reliability_diagram(y_true, p, n_bins: int = 10) -> dict[str, list]:
-    """Equal-width reliability bins over [0, 1].
-
-    Bin ``i`` covers ``[i/n_bins, (i+1)/n_bins)`` with the last bin closed on
-    the right so that ``p == 1`` is included. Empty bins have ``None`` for
-    ``mean_pred`` and ``frac_pos`` and ``count == 0``.
-    """
-    if n_bins < 1:
-        raise ValueError("n_bins must be >= 1")
-    yy = np.asarray(y_true).astype(float).ravel()
-    pp = _as_float_array(p)
-    if yy.shape != pp.shape:
-        raise ValueError("y_true and p must have the same shape")
-    ok = ~(np.isnan(pp) | np.isnan(yy))
-    yy, pp = yy[ok], np.clip(pp[ok], 0.0, 1.0)
-
-    edges = np.linspace(0.0, 1.0, n_bins + 1)
-    idx = np.clip(np.floor(pp * n_bins).astype(int), 0, n_bins - 1)
-
-    bin_lower: list[float] = []
-    bin_upper: list[float] = []
-    mean_pred: list[float | None] = []
-    frac_pos: list[float | None] = []
-    count: list[int] = []
-    for i in range(n_bins):
-        m = idx == i
-        c = int(m.sum())
-        bin_lower.append(float(edges[i]))
-        bin_upper.append(float(edges[i + 1]))
-        count.append(c)
-        if c == 0:
-            mean_pred.append(None)
-            frac_pos.append(None)
-        else:
-            mean_pred.append(float(pp[m].mean()))
-            frac_pos.append(float(yy[m].mean()))
-    return {
-        "bin_lower": bin_lower,
-        "bin_upper": bin_upper,
-        "mean_pred": mean_pred,
-        "frac_pos": frac_pos,
-        "count": count,
-    }
+def _f_beta(prec: float | None, rec: float | None, beta: float = 2.0) -> float | None:
+    if prec is None or rec is None:
+        return None
+    b2 = beta * beta
+    return (1 + b2) * prec * rec / (b2 * prec + rec) if (b2 * prec + rec) > 0 else 0.0
 
 
-__all__ = [
-    "STATUS_OK",
-    "STATUS_INSUFFICIENT",
-    "STATUS_UNFITTED",
-    "finite_sample_quantile",
-    "SplitConformalCalibrator",
-    "empirical_coverage",
-    "SigmoidCalibrator",
-    "IsotonicCalibrator",
-    "classifier_metrics",
-    "reliability_diagram",
-]
+def tune_decision_thresholds(P: np.ndarray, y_idx: np.ndarray, *, grid: np.ndarray | None = None) -> dict[str, Any]:
+    """t_crit maximises Critical F2; given t_crit, t_elev maximises Elevated-or-above F2 (on OOF rows)."""
+    P = np.asarray(P, float); y_idx = np.asarray(y_idx)
+    ok = np.isfinite(P).all(axis=1)
+    P, y_idx = P[ok], y_idx[ok]
+    grid = np.round(np.arange(0.05, 0.951, 0.01), 3) if grid is None else grid
+    best_c, best_f2c = 0.5, -1.0
+    true_c = y_idx == 2
+    for t in grid:
+        pc = P[:, 2] >= t
+        tp = (pc & true_c).sum(); fp = (pc & ~true_c).sum(); fn = (~pc & true_c).sum()
+        f2 = _f_beta(tp / (tp + fp) if tp + fp else None, tp / (tp + fn) if tp + fn else None)
+        if f2 is not None and f2 > best_f2c:
+            best_f2c, best_c = float(f2), float(t)
+    best_e, best_f2e = 0.5, -1.0
+    true_ge = y_idx >= 1
+    for t in grid:
+        pred = apply_decision_rule(P, best_c, float(t))
+        ge = (pred == "Elevated") | (pred == "Critical")
+        tp = (ge & true_ge).sum(); fp = (ge & ~true_ge).sum(); fn = (~ge & true_ge).sum()
+        f2 = _f_beta(tp / (tp + fp) if tp + fp else None, tp / (tp + fn) if tp + fn else None)
+        if f2 is not None and f2 > best_f2e:
+            best_f2e, best_e = float(f2), float(t)
+    return {"t_crit": best_c, "t_elev": best_e, "oof_critical_f2": best_f2c, "oof_elevated_or_above_f2": best_f2e}
 
 
-# --------------------------------------------------------------------------- #
-# Conformalized quantile regression (CQR) with one score per event
-# --------------------------------------------------------------------------- #
-class CQRCalibrator:
-    """Conformalized quantile regression. Given lower/upper quantile predictions
-    (already crossing-corrected), the per-row score is max(lower - y, y - upper); the
-    per-event score is the max over the event's rows; ``q_hat`` is the finite-sample
-    corrected quantile of event scores. Interval = [lower - q_hat, upper + q_hat].
-    Widths adapt to the quantile heads; the correction is a constant shift."""
+class LACPredictionSets:
+    """Split-conformal classification sets (least ambiguous set-valued classifier): score = 1 - p_true on
+    calibration rows; q_hat = finite-sample quantile; set = {c : 1 - p_c <= q_hat}. Always non-empty (argmax kept)."""
 
-    def __init__(self, coverage: float = 0.9, min_events: int = 30) -> None:
-        if not (0.0 < coverage < 1.0):
-            raise ValueError(f"coverage must be in (0, 1), got {coverage}")
-        self.coverage = float(coverage)
-        self.min_events = int(min_events)
-        self.status: str = STATUS_UNFITTED
-        self.q_hat: float | None = None
-        self.n_events: int = 0
-        self.n_rows: int = 0
+    def __init__(self, coverage: float = 0.9, min_rows: int = 30) -> None:
+        self.coverage = float(coverage); self.min_rows = int(min_rows)
+        self.q_hat: float | None = None; self.status: str = STATUS_UNFITTED; self.n_rows: int = 0
 
-    def fit(self, y_true, lower_pred, upper_pred, event_ids) -> "CQRCalibrator":
-        yt = _as_float_array(y_true)
-        lo = _as_float_array(lower_pred)
-        hi = _as_float_array(upper_pred)
-        ev = np.asarray(event_ids)
-        if not (yt.shape == lo.shape == hi.shape == ev.shape):
-            raise ValueError("shape mismatch in CQRCalibrator.fit")
-        valid = ~(np.isnan(yt) | np.isnan(lo) | np.isnan(hi))
-        score = np.maximum(lo[valid] - yt[valid], yt[valid] - hi[valid])
-        self.n_rows = int(valid.sum())
-        if self.n_rows == 0:
-            self.n_events, self.q_hat, self.status = 0, None, STATUS_INSUFFICIENT
-            return self
-        per_event = pd.Series(score).groupby(pd.Series(ev[valid]).to_numpy(), sort=False).max().to_numpy(dtype="float64")
-        self.n_events = int(per_event.size)
-        if self.n_events < self.min_events:
-            self.q_hat, self.status = None, STATUS_INSUFFICIENT
-            return self
-        q = finite_sample_quantile(per_event, self.coverage)
-        if q is None:
-            self.q_hat, self.status = None, STATUS_INSUFFICIENT
-        else:
-            self.q_hat, self.status = float(q), STATUS_OK
+    def fit(self, P: np.ndarray, y_idx: np.ndarray) -> "LACPredictionSets":
+        P = np.asarray(P, float); y_idx = np.asarray(y_idx)
+        ok = np.isfinite(P).all(axis=1)
+        scores = 1.0 - P[ok, :][np.arange(ok.sum()), y_idx[ok]]
+        self.n_rows = int(ok.sum())
+        q = finite_sample_quantile(scores, self.coverage) if self.n_rows >= self.min_rows else None
+        self.q_hat, self.status = (float(q), STATUS_OK) if q is not None else (None, STATUS_INSUFFICIENT)
         return self
 
-    def predict_interval(self, lower_pred, upper_pred) -> tuple[np.ndarray, np.ndarray]:
-        lo = _as_float_array(lower_pred)
-        hi = _as_float_array(upper_pred)
-        lower = np.full(lo.shape, np.nan, dtype="float64")
-        upper = np.full(hi.shape, np.nan, dtype="float64")
-        if self.status != STATUS_OK or self.q_hat is None:
-            return lower, upper
-        ok = ~(np.isnan(lo) | np.isnan(hi))
-        lower[ok] = lo[ok] - self.q_hat
-        upper[ok] = hi[ok] + self.q_hat
-        return lower, upper
+    def predict_sets(self, P: np.ndarray, labels: list[str] = ("Safe", "Elevated", "Critical")) -> list[list[str] | None]:
+        P = np.asarray(P, float)
+        out: list[list[str] | None] = []
+        for row in P:
+            if self.status != STATUS_OK or not np.isfinite(row).all():
+                out.append(None); continue
+            inc = (1.0 - row) <= self.q_hat
+            inc[int(row.argmax())] = True
+            out.append([labels[i] for i in range(len(labels)) if inc[i]])
+        return out
 
     def to_dict(self) -> dict[str, Any]:
-        return {"type": "cqr", "coverage": self.coverage, "min_events": self.min_events, "status": self.status,
-                "q_hat": None if self.q_hat is None else float(self.q_hat), "n_events": int(self.n_events), "n_rows": int(self.n_rows)}
+        return {"type": "lac", "coverage": self.coverage, "min_rows": self.min_rows, "q_hat": self.q_hat, "status": self.status, "n_rows": self.n_rows}
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "CQRCalibrator":
-        obj = cls(coverage=float(d["coverage"]), min_events=int(d.get("min_events", 30)))
-        obj.status = str(d.get("status", STATUS_UNFITTED))
-        q = d.get("q_hat")
-        obj.q_hat = None if q is None else float(q)
-        obj.n_events = int(d.get("n_events", 0))
-        obj.n_rows = int(d.get("n_rows", 0))
+    def from_dict(cls, d: dict[str, Any]) -> "LACPredictionSets":
+        obj = cls(coverage=float(d["coverage"]), min_rows=int(d.get("min_rows", 30)))
+        obj.q_hat = d.get("q_hat"); obj.status = d.get("status", STATUS_UNFITTED); obj.n_rows = int(d.get("n_rows", 0))
         if obj.status == STATUS_OK and obj.q_hat is None:
             obj.status = STATUS_INSUFFICIENT
         return obj
 
 
-def fix_quantile_crossing(point: np.ndarray, lower: np.ndarray, upper: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Ensure lower <= point <= upper elementwise (NaN preserved)."""
-    lo = np.fmin(lower, point)
-    hi = np.fmax(upper, point)
-    return lo, hi
+def prediction_set_metrics(sets: list[list[str] | None], y_true: np.ndarray) -> dict[str, Any]:
+    ok = [s is not None for s in sets]
+    n = int(sum(ok))
+    if n == 0:
+        return {"coverage_empirical": None, "avg_set_size": None, "n": 0}
+    cov = float(np.mean([y in s for s, y, o in zip(sets, y_true, ok) if o]))
+    size = float(np.mean([len(s) for s, o in zip(sets, ok) if o]))
+    return {"coverage_empirical": cov, "avg_set_size": size, "n": n}

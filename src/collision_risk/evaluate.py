@@ -41,7 +41,10 @@ HUMAN_REVIEW_ACTION = "Human review"
 HUMAN_REVIEW_INSUFFICIENT_ACTION = "Human review - insufficient data"
 ESCALATION_WATCH_ACTION = "Escalation watch"
 MONITOR_ACTION = "Monitor"
+LOW_PRIORITY_MONITOR_ACTION = "Low-priority monitor"
 HUMAN_REVIEW_ACTIONS = (HUMAN_REVIEW_ACTION, HUMAN_REVIEW_INSUFFICIENT_ACTION)
+ACTION_ORDER = (MANEUVER_REVIEW_ACTION, ESCALATION_WATCH_ACTION, HUMAN_REVIEW_INSUFFICIENT_ACTION, HUMAN_REVIEW_ACTION,
+                MONITOR_ACTION, LOW_PRIORITY_MONITOR_ACTION, AUTO_CLEAR_ACTION)
 
 PROB_COLUMNS: list[str] = ["p_safe", "p_elevated", "p_critical"]
 SUBSET_NAMES: tuple[str, ...] = ("all_usable", "trivial", "real_forecast")
@@ -500,30 +503,44 @@ def triage_metrics(df: pd.DataFrame) -> Optional[dict]:
     is_watch = actions == ESCALATION_WATCH_ACTION
     is_maneuver = actions == MANEUVER_REVIEW_ACTION
     is_monitor = actions == MONITOR_ACTION
+    is_low_priority = actions == LOW_PRIORITY_MONITOR_ACTION
     is_human = np.isin(actions, HUMAN_REVIEW_ACTIONS)
     fin_crit = fin == "Critical"
     n_crit = int(np.sum(fin_crit))
     n_crit_auto = int(np.sum(fin_crit & is_auto))
+    # True final tier by triage action: shows every routing failure, not only Critical -> auto-clear
+    # (e.g. final-Critical events parked in Monitor or Low-priority monitor).
+    present = [a for a in ACTION_ORDER if a in counts] + [a for a in counts if a not in ACTION_ORDER]
+    by_tier = {a: {t: int(np.sum((actions == a) & (fin == t))) for t in TIERS + [INVALID_LABEL]} for a in present}
     group = {
         "n_events": n,
         "action_counts": counts,
         "action_shares": shares,
+        "action_by_final_tier": by_tier,
         "auto_clear_share": _safe_div(int(np.sum(is_auto)), n),
         "n_final_critical": n_crit,
         "n_final_critical_auto_cleared": n_crit_auto,
         "final_critical_auto_cleared_share": _safe_div(n_crit_auto, n_crit),
         "n_final_critical_in_watch": int(np.sum(fin_crit & is_watch)),
         "n_final_critical_in_maneuver_review": int(np.sum(fin_crit & is_maneuver)),
+        "n_final_critical_in_monitor": int(np.sum(fin_crit & is_monitor)),
+        "n_final_critical_in_low_priority_monitor": int(np.sum(fin_crit & is_low_priority)),
+        "n_final_critical_in_human_review": int(np.sum(fin_crit & is_human)),
+        "n_final_critical_not_urgent": int(np.sum(fin_crit & (is_monitor | is_low_priority | is_auto))),
         "maneuver_review_share": _safe_div(int(np.sum(is_maneuver)), n),
         "human_review_share": _safe_div(int(np.sum(is_human)), n),
         "watch_share": _safe_div(int(np.sum(is_watch)), n),
         "monitor_share": _safe_div(int(np.sum(is_monitor)), n),
+        "low_priority_monitor_share": _safe_div(int(np.sum(is_low_priority)), n),
+        "review_workload_share": _safe_div(int(np.sum(is_maneuver | is_watch | is_human)), n),
     }
     return _finalise_group(
         group,
         exclude=(
-            "n_events", "action_counts", "action_shares", "n_final_critical", "n_final_critical_auto_cleared",
-            "n_final_critical_in_watch", "n_final_critical_in_maneuver_review",
+            "n_events", "action_counts", "action_shares", "action_by_final_tier", "n_final_critical",
+            "n_final_critical_auto_cleared", "n_final_critical_in_watch", "n_final_critical_in_maneuver_review",
+            "n_final_critical_in_monitor", "n_final_critical_in_low_priority_monitor", "n_final_critical_in_human_review",
+            "n_final_critical_not_urgent",
         ),
     )
 
@@ -668,23 +685,34 @@ def _prediction_set_metrics(df: pd.DataFrame, nominal: float) -> Optional[dict]:
         return None
     fin = _tier_col(df, "final_tier")
     sets = df["prediction_set"].tolist()
-    sizes, covered = [], []
-    for s, t in zip(sets, fin):
+    pred = _tier_col(df, "predicted_final_tier")
+    sizes, covered, truths, disagree = [], [], [], []
+    for s, t, p in zip(sets, fin, pred):
         if _is_missing(s) or t == INVALID_LABEL:
             continue
         items = [str(x) for x in list(s)]
         sizes.append(len(items))
         covered.append(t in items)
+        truths.append(t)
+        # the threshold decision names a class the set does not contain
+        disagree.append(p != INVALID_LABEL and p not in items)
     n_used = len(sizes)
+    sizes_a, covered_a, truths_a = np.asarray(sizes), np.asarray(covered, dtype=bool), np.asarray(truths, dtype=object)
+    # Class-conditional coverage: marginal 90 % coverage can hide near-zero coverage of the rare Critical class.
+    by_class = {t: _safe_div(int(np.sum(covered_a & (truths_a == t))), int(np.sum(truths_a == t))) for t in TIERS}
+    size_by_class = {t: (float(np.mean(sizes_a[truths_a == t])) if np.any(truths_a == t) else None) for t in TIERS}
     group = {
         "n_used": n_used,
         "coverage_nominal": float(nominal) if nominal is not None else None,
-        "coverage_empirical": _safe_div(int(np.sum(covered)), n_used),
-        "avg_set_size": (float(np.mean(sizes)) if n_used else None),
-        "singleton_share": _safe_div(int(np.sum(np.asarray(sizes) == 1)), n_used) if n_used else None,
-        "empty_share": _safe_div(int(np.sum(np.asarray(sizes) == 0)), n_used) if n_used else None,
+        "coverage_empirical": _safe_div(int(np.sum(covered_a)), n_used),
+        "coverage_by_true_class": by_class,
+        "avg_set_size": (float(np.mean(sizes_a)) if n_used else None),
+        "avg_set_size_by_true_class": size_by_class,
+        "singleton_share": _safe_div(int(np.sum(sizes_a == 1)), n_used) if n_used else None,
+        "empty_share": _safe_div(int(np.sum(sizes_a == 0)), n_used) if n_used else None,
+        "decision_outside_set_share": _safe_div(int(np.sum(disagree)), n_used) if n_used else None,
     }
-    return _finalise_group(group, exclude=("n_used", "coverage_nominal"))
+    return _finalise_group(group, exclude=("n_used", "coverage_nominal", "coverage_by_true_class", "avg_set_size_by_true_class"))
 
 
 # --------------------------------------------------------------------------- #
@@ -780,6 +808,9 @@ COMPARE_COLUMNS: list[tuple[str, tuple[str, ...]]] = [
     ("log_loss", ("probability", "log_loss")),
     ("auto_clear_share", ("triage", "auto_clear_share")),
     ("n_final_critical_auto_cleared", ("triage", "n_final_critical_auto_cleared")),
+    ("low_priority_monitor_share", ("triage", "low_priority_monitor_share")),
+    ("human_review_share", ("triage", "human_review_share")),
+    ("n_final_critical_not_urgent", ("triage", "n_final_critical_not_urgent")),
     ("watch_share", ("triage", "watch_share")),
     ("escalation_recall", ("escalation", "non_critical_now", "recall_of_escalations")),
     ("escalation_flag_precision", ("escalation", "non_critical_now", "precision_of_flags")),

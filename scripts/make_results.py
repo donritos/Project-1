@@ -96,18 +96,30 @@ def comparison_table(models: dict, order: list[str], subset: str, primary: Optio
     if not models:
         return ["No model results available."]
     table = compare_models({m: models[m] for m in order}, subset=subset)
+    # Workload columns only exist in artifacts produced after triage rule 7; omit them for older runs
+    # instead of printing a wall of "undefined".
+    workload = any(table.loc[m]["low_priority_monitor_share"] is not None for m in order)
     header = ["Model", "Events", "Critical recall", "Critical precision", "Critical F2", "Elev+ F2", "Macro-F1",
-              "Brier", "Log loss", "Auto-clear", "Final Crit auto-cleared", "Watch share", "Escalation recall"]
+              "Brier", "Log loss", "Auto-clear"]
+    if workload:
+        header += ["Low-priority monitor"]
+    header += ["Human review", "Final Crit auto-cleared"]
+    if workload:
+        header += ["Final Crit not urgent"]
+    header += ["Watch share", "Escalation recall"]
     rows = []
     for m in order:
         r = table.loc[m]
         name = f"**{m}**" if m == primary else m
-        rows.append([
-            name, f(r["n_events"]), f(r["critical_recall"]), f(r["critical_precision"]), f(r["critical_f2"]),
-            f(r["elevated_or_above_f2"]), f(r["macro_f1"]), f(r["brier"]), f(r["log_loss"]),
-            pct(r["auto_clear_share"]), f(r["n_final_critical_auto_cleared"]), pct(r["watch_share"]),
-            f(r["escalation_recall"]),
-        ])
+        row = [name, f(r["n_events"]), f(r["critical_recall"]), f(r["critical_precision"]), f(r["critical_f2"]),
+               f(r["elevated_or_above_f2"]), f(r["macro_f1"]), f(r["brier"]), f(r["log_loss"]), pct(r["auto_clear_share"])]
+        if workload:
+            row += [pct(r["low_priority_monitor_share"])]
+        row += [pct(r["human_review_share"]), f(r["n_final_critical_auto_cleared"])]
+        if workload:
+            row += [f(r["n_final_critical_not_urgent"])]
+        row += [pct(r["watch_share"]), f(r["escalation_recall"])]
+        rows.append(row)
     return md_table(header, rows)
 
 
@@ -172,11 +184,27 @@ def triage_section(models: dict, primary: Optional[str]) -> list[str]:
             subset, f(t.get("n_events")), pct(t.get("auto_clear_share")), f(t.get("n_final_critical_auto_cleared")),
             f(t.get("n_final_critical")), pct(t.get("watch_share")), f(t.get("n_final_critical_in_watch")),
             pct(t.get("maneuver_review_share")), pct(t.get("human_review_share")), pct(t.get("monitor_share")),
+            pct(t.get("low_priority_monitor_share", 0.0)), f(t.get("n_final_critical_not_urgent", "n/a (older artifacts)")),
         ])
     if not rows:
         return ["No triage results available (triage_action column missing)."]
     out += md_table(["Subset", "Events", "Auto-clear share", "Final-Critical auto-cleared", "Final Critical",
-                     "Watch share", "Final-Critical in watch", "Maneuver review", "Human review", "Monitor"], rows)
+                     "Watch share", "Final-Critical in watch", "Maneuver review", "Human review", "Monitor",
+                     "Low-priority monitor", "Final-Critical not urgent"], rows)
+    out.append("")
+    out.append("Review workload = Maneuver planning review + Escalation watch + Human review. Auto-clear and "
+               "low-priority monitor shares are *potential* workload reductions on the holdout, not demonstrated "
+               "labour savings; an operator study has not been run.")
+    for subset in ("real_forecast", "all_usable"):
+        bt = g(pm, "subsets", subset, "triage", "action_by_final_tier") or {}
+        if bt:
+            out.append("")
+            out.append(f"True final tier by triage action, {subset} (every routing failure is visible here, "
+                       "not only final-Critical events that were auto-cleared):")
+            out.append("")
+            cols = [c for c in TIERS if any(c in v for v in bt.values())]
+            out += md_table(["Action"] + cols + ["Total"],
+                            [[a] + [f(v.get(c, 0)) for c in cols] + [f(sum(int(x) for x in v.values()))] for a, v in bt.items()])
     n_cleared = g(pm, "subsets", "all_usable", "triage", "n_final_critical_auto_cleared")
     if n_cleared is None:
         pass
@@ -351,7 +379,8 @@ def selection_section(ev: dict) -> list[str]:
     if cv:
         best = cv.get("best") or {}
         n_cfg = len(cv.get("results") or []) or cv.get("n_configs")
-        out.append(f"Grouped CV search ({f(cv.get('n_folds'))} folds, {f(n_cfg)} configurations, rule: "
+        n_folds = cv.get("n_folds") or (len(best.get("best_iterations") or []) or None)
+        out.append(f"Grouped CV search ({f(n_folds)} folds, {f(n_cfg)} configurations, rule: "
                    f"{cv.get('selection_rule', 'n/a')}). Best params `{json.dumps(best.get('params', {}), default=str)}`, "
                    f"scores `{json.dumps(best.get('scores', {}), default=str)}`.")
         out.append("")
@@ -500,12 +529,30 @@ def render(ev: dict, audit: dict, man: dict) -> str:
     out.append("")
     cs = ev.get("conformal_sets")
     if cs:
-        out.append(f"Nominal coverage {f(cs.get('coverage_nominal'))}, empirical holdout coverage "
-                   f"{f(cs.get('coverage_empirical'))}, average set size {f(cs.get('avg_set_size'), 2)}, q_hat {f(cs.get('q_hat'), 4)}.")
-        ps = g(prim, "subsets", "real_forecast", "prediction_sets")
-        if ps:
-            out.append(f"On real_forecast events: coverage {f(ps.get('coverage_empirical'))}, average set size "
-                       f"{f(ps.get('avg_set_size'), 2)}, singleton share {pct(ps.get('singleton_share'))}.")
+        hu = cs.get("holdout_all_usable") or {}
+        out.append(f"Nominal coverage {f(cs.get('coverage_nominal'))}, q_hat {f(cs.get('q_hat'), 4)}; empirical holdout coverage "
+                   f"{f(hu.get('coverage_empirical') or cs.get('coverage_empirical'))}, average set size "
+                   f"{f(hu.get('avg_set_size') or cs.get('avg_set_size'), 2)} (all usable events).")
+        for subset in ("real_forecast", "all_usable"):
+            ps = g(prim, "subsets", subset, "prediction_sets")
+            if ps:
+                out.append("")
+                line = (f"{subset}: marginal coverage {f(ps.get('coverage_empirical'))}, average set size "
+                        f"{f(ps.get('avg_set_size'), 2)}, singleton share {pct(ps.get('singleton_share'))}")
+                if ps.get("decision_outside_set_share") is not None:
+                    line += f", decision outside set {pct(ps.get('decision_outside_set_share'))}"
+                out.append(line + ".")
+                bc = ps.get("coverage_by_true_class") or {}
+                bs = ps.get("avg_set_size_by_true_class") or {}
+                if bc:
+                    out.append("")
+                    out += md_table(["True final tier", "Coverage", "Average set size"],
+                                    [[t, f(bc.get(t)), f(bs.get(t), 2)] for t in TIERS])
+        out.append("")
+        out.append("When every set is a singleton the sets carry no information beyond the point decision; "
+                   "marginal coverage above nominal then comes from the majority Safe class, and the "
+                   "class-conditional table above is the honest statement of what the sets guarantee. "
+                   "No class-conditional coverage guarantee is claimed.")
     else:
         out.append("Disabled or not available.")
     out.append("")
@@ -516,7 +563,7 @@ def render(ev: dict, audit: dict, man: dict) -> str:
 
     out.append("## Test-set predictions (Kelvins test file)")
     out.append("")
-    tier_counts = man.get("tier_counts") or man.get("predicted_tier_counts") or {}
+    tier_counts = man.get("predicted_class_distribution") or man.get("tier_counts") or man.get("predicted_tier_counts") or {}
     if tier_counts:
         total = sum(v for v in tier_counts.values() if isinstance(v, (int, float))) or None
         rows = [[k, v, pct(v / total) if total else "undefined"] for k, v in tier_counts.items()]
@@ -529,6 +576,8 @@ def render(ev: dict, audit: dict, man: dict) -> str:
     extra = []
     if man.get("n_predictions") is not None:
         extra.append(f"{man['n_predictions']} predictions")
+    if man.get("n_events") is not None:
+        extra.append(f"{man['n_events']} events / {man.get('n_snapshots', 'n/a')} snapshots")
     if man.get("status_counts"):
         extra.append(f"status counts {json.dumps(man['status_counts'])}")
     if man.get("triage_counts"):
@@ -552,6 +601,11 @@ def render(ev: dict, audit: dict, man: dict) -> str:
 
     out.append("## Notes")
     out.append("")
+    counts_all = g(prim, "subsets", "all_usable", "triage", "action_counts") or {}
+    if counts_all and "Low-priority monitor" not in counts_all and "Human review" in counts_all:
+        out.append("- **These artifacts predate triage rule 7 (Low-priority monitor).** Under the current policy the "
+                   "predicted-Safe events below the auto-clear bar that appear here as Human review are routed to "
+                   "Low-priority monitor; rerun `train` and `predict` with the data in place to refresh the numbers.")
     notes = ev.get("notes") or []
     for n in notes:
         out.append(f"- {n}")

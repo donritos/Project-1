@@ -153,9 +153,11 @@ def assemble_forecast_frame(snap: pd.DataFrame, status: np.ndarray, flags: list[
     cur, src = current_tier_columns(snap, bundle.use_past_risk)
     has_risk = "risk" in snap.columns
     latest_risk = pd.to_numeric(snap["risk"], errors="coerce").to_numpy(float) if has_risk else np.full(n, np.nan)
-    ev_key = snap["dataset_id"].astype(str) + ":" + snap["event_id"].astype(str)
     latest_mask = snap["is_latest_snapshot"].to_numpy(bool)
-    cf = pd.Series(cur, index=snap.index).where(latest_mask).groupby(ev_key.to_numpy()).transform("first")
+    # The carry-forward baseline for a snapshot is the tier known AT that snapshot. Copying the
+    # latest snapshot's tier backward would let a later CDM change an earlier snapshot's triage
+    # action and reason codes; on the latest snapshot (the event forecast) both definitions agree.
+    cf = pd.Series(cur, index=snap.index)
     frame = pd.DataFrame({
         "schema_version": SCHEMA_VERSION,
         "dataset_id": snap["dataset_id"].astype(str).to_numpy(),
@@ -163,6 +165,9 @@ def assemble_forecast_frame(snap: pd.DataFrame, status: np.ndarray, flags: list[
         "row_id": snap["row_id"].astype(str).to_numpy(),
         "time_to_tca_days": pd.to_numeric(snap["time_to_tca"], errors="coerce").to_numpy(float),
         "miss_distance_m": pd.to_numeric(snap["miss_distance"], errors="coerce").to_numpy(float),
+        "relative_position_r_m": pd.to_numeric(snap["relative_position_r"], errors="coerce").to_numpy(float),
+        "relative_position_t_m": pd.to_numeric(snap["relative_position_t"], errors="coerce").to_numpy(float),
+        "relative_position_n_m": pd.to_numeric(snap["relative_position_n"], errors="coerce").to_numpy(float),
         "is_latest_snapshot": latest_mask,
         "n_cdms_2d": snap["n_cdms_2d"].fillna(1).astype(int).to_numpy(),
         "has_history": snap["has_history"].fillna(0).astype(int).to_numpy(),
@@ -235,7 +240,7 @@ def forecast_frame(bundle: ForecastBundle, df: pd.DataFrame, *, with_explanation
         idx = np.flatnonzero(valid & (frame["is_latest_snapshot"].to_numpy() | explain_all_snapshots))
         booster = bundle.booster if bundle.kind == "multiclass" else bundle.booster_crit
         expl = explain_forecasts(booster, X.iloc[idx], class_index=2 if bundle.kind == "multiclass" else None,
-                                 row_ids=list(frame["row_id"].iloc[idx]), dataset_id=str(frame["dataset_id"].iloc[0]),
+                                 row_ids=list(frame["row_id"].iloc[idx]), dataset_id=frame["dataset_id"].iloc[idx].astype(str).tolist(),
                                  model_version=bundle.model_version, p_critical=P[idx, 2], predicted_tier=frame["predicted_final_tier"].iloc[idx].tolist(),
                                  top_k=explanation_top_k,
                                  component="lgbm_multiclass_critical_logit" if bundle.kind == "multiclass" else "lgbm_binary_critical_logit")

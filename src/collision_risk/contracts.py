@@ -27,6 +27,7 @@ class TriageAction(str, Enum):
     HUMAN_REVIEW = "Human review"
     ESCALATION_WATCH = "Escalation watch"
     MONITOR = "Monitor"
+    LOW_PRIORITY_MONITOR = "Low-priority monitor"   # predicted Safe, current Safe, good quality, but P(Safe) below the auto-clear bar
     AUTO_CLEAR_CANDIDATE = "Auto-clear candidate"
 
 
@@ -181,6 +182,9 @@ class EventForecastRecord(BaseModel):
     row_id: str                              # snapshot CDM that the forecast was made from
     time_to_tca_days: Optional[float]
     miss_distance_m: Optional[float]
+    relative_position_r_m: Optional[float] = None    # RTN geometry of the snapshot, for the dashboard timeline
+    relative_position_t_m: Optional[float] = None
+    relative_position_n_m: Optional[float] = None
     is_latest_snapshot: bool
     n_cdms_2d: int
     has_history: int
@@ -189,9 +193,9 @@ class EventForecastRecord(BaseModel):
     latest_risk: Optional[float]
     prediction_status: PredictionStatus
     quality_flags: list[str] = Field(default_factory=list)
-    p_safe: Optional[float]
-    p_elevated: Optional[float]
-    p_critical: Optional[float]
+    p_safe: Optional[float]                  # calibrated probability that the event's FINAL tier is Safe
+    p_elevated: Optional[float]              # ... is Elevated
+    p_critical: Optional[float]              # ... is Critical. NOT a physical collision probability (Pc).
     predicted_final_tier: Optional[RiskTier]
     prediction_set: Optional[list[str]] = None
     triage_action: TriageAction

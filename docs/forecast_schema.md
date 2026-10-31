@@ -11,6 +11,7 @@ Policy, evaluation and explanation modules consume this frame; `pipeline.py` pro
 | `row_id` | str | snapshot CDM row id (`dataset_id:source_row_index`) |
 | `time_to_tca_days` | float | snapshot's time to closest approach |
 | `miss_distance_m` | float | snapshot's miss distance |
+| `relative_position_r_m`, `relative_position_t_m`, `relative_position_n_m` | float | snapshot's RTN relative position, for the dashboard trajectory plot |
 | `is_latest_snapshot` | bool | True on the event's last CDM at >= 2 days |
 | `n_cdms_2d` | int | CDMs at >= 2 days seen so far (incl. snapshot) |
 | `has_history` | int (0/1) | 0 when the snapshot is the first CDM of the event |
@@ -19,7 +20,7 @@ Policy, evaluation and explanation modules consume this frame; `pipeline.py` pro
 | `latest_risk` | float, nullable | snapshot's own `risk`; NaN when `use_past_risk` is off or unavailable (test demo keeps it) |
 | `prediction_status` | str | `valid` / `warning` / `invalid` |
 | `quality_flags` | list[str] | from `data.validate_rows` |
-| `p_safe`, `p_elevated`, `p_critical` | float | calibrated class probabilities, sum to 1 (NaN for invalid rows) |
+| `p_safe`, `p_elevated`, `p_critical` | float | calibrated probabilities that the event's **final official tier** is Safe / Elevated / Critical; sum to 1 (NaN for invalid rows). **Not** a physical collision probability (Pc) |
 | `predicted_final_tier` | str, nullable | result of the frozen decision rule (`Safe`/`Elevated`/`Critical`); None if invalid |
 | `prediction_set` | list[str], nullable | optional conformal prediction set at 90 % |
 | `slope_log_miss` | float | least-squares slope of log10 miss distance vs `time_to_tca` over snapshots so far (per day of time_to_tca; **negative slope = miss shrinking as TCA approaches**... see sign note) |
@@ -27,8 +28,8 @@ Policy, evaluation and explanation modules consume this frame; `pipeline.py` pro
 | `slope_log_sigma` | float | slope of log10 combined radial sigma vs `time_to_tca` |
 | `volatility_mre` | float | std of `max_risk_estimate` over snapshots so far |
 | `volatility_risk` | float, nullable | std of `risk` over snapshots so far (NaN if past risk off) |
-| `carry_forward_tier` | str | = `current_tier` of the latest snapshot (the official naive baseline) |
-| `triage_action` | str | assigned by `policy.assign_triage` |
+| `carry_forward_tier` | str | = the snapshot's own `current_tier`: what the official naive baseline would forecast at that snapshot. Never the latest snapshot's tier copied backward, so a later CDM cannot change an earlier snapshot's triage |
+| `triage_action` | str | assigned by `policy.assign_triage`: Maneuver planning review, Escalation watch, Human review, Human review - insufficient data, Monitor, Low-priority monitor, Auto-clear candidate |
 | `reason_codes` | list[str] | assigned by `policy.assign_triage` |
 | `explanation_id` | str, nullable | link to explanation record |
 | `model_version`, `feature_version`, `policy_version` | str | provenance |

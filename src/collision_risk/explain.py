@@ -454,7 +454,7 @@ def explain_forecasts(
     *,
     class_index: int | None,
     row_ids: Sequence[str] | np.ndarray,
-    dataset_id: str,
+    dataset_id: str | Sequence[str],
     model_version: str,
     p_critical: np.ndarray | Sequence[float],
     predicted_tier: Sequence[str] | np.ndarray,
@@ -485,6 +485,13 @@ def explain_forecasts(
     tier_l = [None if (t is None or (isinstance(t, float) and math.isnan(t))) else str(t) for t in predicted_tier]
     if len(tier_l) != n:
         raise ValueError("predicted_tier must have one entry per row of X")
+    # One dataset id per row (a batch may mix datasets); a scalar applies to every row.
+    if isinstance(dataset_id, str):
+        dataset_l: list[str] = [dataset_id] * n
+    else:
+        dataset_l = [str(d) for d in dataset_id]
+        if len(dataset_l) != n:
+            raise ValueError("dataset_id must be a string or have one entry per row of X")
 
     contribs, bias, feature_names = critical_class_contributions(booster, X, class_index=class_index)
     output_units = UNITS_BINARY if class_index is None else UNITS_MULTICLASS
@@ -592,7 +599,7 @@ def explain_forecasts(
     df = pd.DataFrame(
         {
             "explanation_id": [f"{explanation_id_prefix}:{r}" for r in row_ids_l],
-            "dataset_id": dataset_id,
+            "dataset_id": dataset_l,
             "row_id": row_ids_l,
             "component": component,
             "output_units": output_units,

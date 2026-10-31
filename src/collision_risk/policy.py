@@ -31,10 +31,17 @@ Precedence (first match wins; reason codes still list every applicable condition
 6. predicted Safe, p_safe >= t_clear, current tier Safe and acceptable quality
    (status 'valid' or every flag allow-listed)
                                             -> Auto-clear candidate
-7. everything else                          -> Human review
+7. predicted Safe, p_safe < t_clear, current tier Safe and acceptable quality
+                                            -> Low-priority monitor
+8. everything else (predicted Safe with a non-Safe current tier or blocking quality
+   flags)                                   -> Human review
 
-A de-escalation claim is never auto-cleared (rule 4 or the current-tier condition of
-rule 6 always intercepts it). ``t_watch`` and ``t_clear`` are tuned on dev
+Rule 7 exists because the auto-clear bar is tuned for zero final-Critical events
+cleared and therefore sits very high; without it roughly half of all events, most of
+them confidently predicted Safe, fell through to Human review. A low-priority monitor
+item is still reviewed, but after Maneuver planning, Escalation watch, Human review and
+Monitor items. A de-escalation claim is never auto-cleared or low-priority (rule 4 or
+the current-tier condition of rules 6 and 7 always intercepts it). ``t_watch`` and ``t_clear`` are tuned on dev
 out-of-fold forecasts by :func:`tune_policy_thresholds`.
 """
 from __future__ import annotations
@@ -444,11 +451,12 @@ def assign_triage(df: pd.DataFrame, cfg: dict, policy_params: dict) -> pd.DataFr
     watch = escalation_risk & ~maneuver
     review4 = forecast_ok & ~maneuver & ~watch & (cf_disagree | ambiguous | deesc_review)
     monitor = pred_elev & ~maneuver & ~watch & ~review4
-    auto_clear = (
-        p_safe_ok & ~watch & ~review4 & (cur_sev == TIER_SEVERITY[SAFE]) & quality_ok & ~deesc_claim
-    )
+    safe_eligible = pred_safe & ~watch & ~review4 & (cur_sev == TIER_SEVERITY[SAFE]) & quality_ok & ~deesc_claim
+    auto_clear = safe_eligible & p_safe_ok
+    low_priority = safe_eligible & low_conf_safe
 
     action = np.full(n, TriageAction.HUMAN_REVIEW.value, dtype=object)
+    action[low_priority] = TriageAction.LOW_PRIORITY_MONITOR.value
     action[auto_clear] = TriageAction.AUTO_CLEAR_CANDIDATE.value
     action[monitor] = TriageAction.MONITOR.value
     action[watch] = TriageAction.ESCALATION_WATCH.value

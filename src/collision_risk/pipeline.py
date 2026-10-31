@@ -141,7 +141,7 @@ def _finish_learned_candidate(name: str, kind: str, feature_set: str, cfg: dict,
     rf = ~oof_latest["is_trivial"].to_numpy(bool)
     sc = T.critical_f2_from_probs(np.eye(3)[pd.Series(pred_oof).map(T.TIER_INDEX).fillna(0).astype(int).to_numpy()][rf], y_lat[rf])
     diag = {"oof_decision": thr, "oof_policy": pol, "oof_real_forecast_at_tuned_thresholds": sc,
-            "oof_calibration": probability_metrics(oof_cal[latest], y[latest]),
+            "oof_calibration": probability_metrics(oof_cal[latest], np.array(T.TIERS)[y[latest]]),
             "oof_prediction_sets": prediction_set_metrics(sets_model.predict_sets(oof_cal[oof_eval_mask]), np.array(T.TIERS)[y[oof_eval_mask]]) if sets_model else None,
             "iterations": it}
     return bundle, diag
@@ -360,14 +360,17 @@ def stage_predict(cfg: dict, *, input_path: str | Path | None = None, dataset_id
     if out.explanations is not None:
         out.explanations.to_parquet(out_dir / "explanations.parquet", index=False)
     sub = events.sort_values("event_id")[["event_id", "predicted_final_tier", "p_safe", "p_elevated", "p_critical", "triage_action"]]
-    sub.to_csv(out_dir / "submission.csv", index=False)
+    # LF line endings on every platform so the recorded sha256 is reproducible after a git checkout
+    sub.to_csv(out_dir / "submission.csv", index=False, lineterminator="\n")
+    bcfg = bundle.cfg  # provenance comes from the configuration the bundle was trained with
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(), "package_version": PKG_VERSION, "python": platform.python_version(),
         "lightgbm": lgb.__version__, "pandas": pd.__version__, "numpy": np.__version__, "schema_version": SCHEMA_VERSION_OF(events),
         "task": "final-tier forecast", "model_version": bundle.model_version, "model_kind": bundle.kind, "feature_version": bundle.meta.get("feature_version"),
-        "policy_version": cfg["policy_version"], "feature_set": bundle.feature_set, "use_past_risk": bundle.use_past_risk,
-        "horizon_min_days": cfg["horizon"]["min_days"], "thresholds": bundle.thresholds, "split_hash": bundle.meta.get("split_hash"),
-        "units": cfg["units"], "input": {"dataset_id": dataset_id, **meta, **out.info},
+        "policy_version": bcfg["policy_version"], "feature_set": bundle.feature_set, "use_past_risk": bundle.use_past_risk,
+        "horizon_min_days": bcfg["horizon"]["min_days"], "thresholds": bundle.thresholds, "split_hash": bundle.meta.get("split_hash"),
+        "bundle_path": str(bundle.path), "trained_at": bundle.meta.get("trained_at"),
+        "units": bcfg["units"], "input": {"dataset_id": dataset_id, **meta, **out.info},
         "n_events": int(len(events)), "n_snapshots": int(len(snaps)),
         "predicted_class_distribution": events["predicted_final_tier"].value_counts(dropna=False).to_dict(),
         "predicted_class_share": events["predicted_final_tier"].value_counts(normalize=True, dropna=False).round(4).to_dict(),

@@ -10,38 +10,38 @@ Subsets: `all_usable` = every holdout event; `trivial` = the event's final CDM w
 
 Headline metric: **Critical recall on real_forecast events**, read together with Critical precision / F2. `carry_forward_risk` is the official naive baseline (the latest known tier carried forward).
 
-| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Final Crit auto-cleared | Watch share | Escalation recall |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| carry_forward_risk | 1779 | 0.797 | 0.764 | 0.790 | 0.918 | 0.858 | 0.142 | 1.957 | 0.0% | 0 | 0.0% | 0.000 |
-| **lgbm_ordinal** | 1779 | 0.907 | 0.673 | 0.848 | 0.919 | 0.838 | 0.108 | 0.204 | 17.0% | 0 | 4.7% | 0.750 |
-| carry_forward_mre | 1779 | 0.797 | 0.686 | 0.772 | 0.813 | 0.700 | 0.527 | 7.284 | 0.0% | 0 | 0.0% | 0.000 |
-| majority | 1779 | 0.000 | undefined | 0.000 | 0.000 | 0.284 | 0.512 | 7.067 | 0.0% | 0 | 0.0% | 0.000 |
-| logistic | 1779 | 0.864 | 0.689 | 0.823 | 0.902 | 0.825 | 0.144 | 0.278 | 32.3% | 2 | 5.8% | 0.792 |
-| lgbm_multiclass | 1779 | 0.881 | 0.722 | 0.844 | 0.921 | 0.849 | 0.107 | 0.209 | 27.4% | 0 | 4.9% | 0.792 |
+| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Human review | Final Crit auto-cleared | Watch share | Escalation recall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| carry_forward_risk | 1779 | 0.797 | 0.764 | 0.790 | 0.918 | 0.858 | 0.142 | 1.957 | 0.0% | 74.0% | 0 | 0.0% | 0.000 |
+| **lgbm_ordinal** | 1779 | 0.907 | 0.673 | 0.848 | 0.919 | 0.838 | 0.108 | 0.204 | 17.0% | 54.4% | 0 | 4.7% | 0.750 |
+| carry_forward_mre | 1779 | 0.797 | 0.686 | 0.772 | 0.813 | 0.700 | 0.527 | 7.284 | 0.0% | 54.6% | 0 | 0.0% | 0.000 |
+| majority | 1779 | 0.000 | undefined | 0.000 | 0.000 | 0.284 | 0.512 | 7.067 | 0.0% | 100.0% | 0 | 0.0% | 0.000 |
+| logistic | 1779 | 0.864 | 0.689 | 0.823 | 0.902 | 0.825 | 0.144 | 0.278 | 32.3% | 39.1% | 2 | 5.8% | 0.792 |
+| lgbm_multiclass | 1779 | 0.881 | 0.722 | 0.844 | 0.921 | 0.849 | 0.107 | 0.209 | 27.4% | 44.0% | 0 | 4.9% | 0.792 |
 
 `lgbm_ordinal` beats `carry_forward_risk` on Critical F2 (real_forecast): 0.848 vs 0.790.
 
 ### All usable holdout events
 
-| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Final Crit auto-cleared | Watch share | Escalation recall |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| carry_forward_risk | 2389 | 0.856 | 0.831 | 0.851 | 0.938 | 0.894 | 0.105 | 1.457 | 0.0% | 0 | 0.0% | 0.000 |
-| **lgbm_ordinal** | 2389 | 0.934 | 0.696 | 0.874 | 0.930 | 0.850 | 0.098 | 0.187 | 14.4% | 0 | 4.6% | 0.750 |
-| carry_forward_mre | 2389 | 0.856 | 0.769 | 0.837 | 0.835 | 0.745 | 0.454 | 6.269 | 0.0% | 0 | 0.0% | 0.000 |
-| majority | 2389 | 0.000 | undefined | 0.000 | 0.000 | 0.286 | 0.501 | 6.928 | 0.0% | 0 | 0.0% | 0.000 |
-| logistic | 2389 | 0.904 | 0.706 | 0.856 | 0.890 | 0.826 | 0.142 | 0.270 | 34.9% | 2 | 5.5% | 0.792 |
-| lgbm_multiclass | 2389 | 0.916 | 0.754 | 0.878 | 0.935 | 0.868 | 0.095 | 0.186 | 24.4% | 0 | 4.7% | 0.792 |
+| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Human review | Final Crit auto-cleared | Watch share | Escalation recall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| carry_forward_risk | 2389 | 0.856 | 0.831 | 0.851 | 0.938 | 0.894 | 0.105 | 1.457 | 0.0% | 74.6% | 0 | 0.0% | 0.000 |
+| **lgbm_ordinal** | 2389 | 0.934 | 0.696 | 0.874 | 0.930 | 0.850 | 0.098 | 0.187 | 14.4% | 57.2% | 0 | 4.6% | 0.750 |
+| carry_forward_mre | 2389 | 0.856 | 0.769 | 0.837 | 0.835 | 0.745 | 0.454 | 6.269 | 0.0% | 57.1% | 0 | 0.0% | 0.000 |
+| majority | 2389 | 0.000 | undefined | 0.000 | 0.000 | 0.286 | 0.501 | 6.928 | 0.0% | 100.0% | 0 | 0.0% | 0.000 |
+| logistic | 2389 | 0.904 | 0.706 | 0.856 | 0.890 | 0.826 | 0.142 | 0.270 | 34.9% | 37.6% | 2 | 5.5% | 0.792 |
+| lgbm_multiclass | 2389 | 0.916 | 0.754 | 0.878 | 0.935 | 0.868 | 0.095 | 0.186 | 24.4% | 47.5% | 0 | 4.7% | 0.792 |
 
 ### Trivial events (answer visible in the input)
 
-| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Final Crit auto-cleared | Watch share | Escalation recall |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| carry_forward_risk | 610 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 | -0.000 | 0.0% | 0 | 0.0% | undefined |
-| **lgbm_ordinal** | 610 | 1.000 | 0.754 | 0.939 | 0.965 | 0.882 | 0.069 | 0.137 | 7.0% | 0 | 4.4% | undefined |
-| carry_forward_mre | 610 | 1.000 | 1.000 | 1.000 | 0.908 | 0.879 | 0.239 | 3.307 | 0.0% | 0 | 0.0% | undefined |
-| majority | 610 | 0.000 | undefined | 0.000 | 0.000 | 0.289 | 0.472 | 6.523 | 0.0% | 0 | 0.0% | undefined |
-| logistic | 610 | 1.000 | 0.742 | 0.935 | 0.849 | 0.816 | 0.139 | 0.248 | 42.5% | 0 | 4.6% | undefined |
-| lgbm_multiclass | 610 | 1.000 | 0.831 | 0.961 | 0.980 | 0.921 | 0.058 | 0.121 | 15.4% | 0 | 4.1% | undefined |
+| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Human review | Final Crit auto-cleared | Watch share | Escalation recall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| carry_forward_risk | 610 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 | -0.000 | 0.0% | 76.4% | 0 | 0.0% | undefined |
+| **lgbm_ordinal** | 610 | 1.000 | 0.754 | 0.939 | 0.965 | 0.882 | 0.069 | 0.137 | 7.0% | 65.4% | 0 | 4.4% | undefined |
+| carry_forward_mre | 610 | 1.000 | 1.000 | 1.000 | 0.908 | 0.879 | 0.239 | 3.307 | 0.0% | 64.4% | 0 | 0.0% | undefined |
+| majority | 610 | 0.000 | undefined | 0.000 | 0.000 | 0.289 | 0.472 | 6.523 | 0.0% | 100.0% | 0 | 0.0% | undefined |
+| logistic | 610 | 1.000 | 0.742 | 0.935 | 0.849 | 0.816 | 0.139 | 0.248 | 42.5% | 33.3% | 0 | 4.6% | undefined |
+| lgbm_multiclass | 610 | 1.000 | 0.831 | 0.961 | 0.980 | 0.921 | 0.058 | 0.121 | 15.4% | 57.7% | 0 | 4.1% | undefined |
 
 ## Confusion matrices
 
@@ -138,11 +138,13 @@ Among events that are not Critical at the forecast time: how many end Critical, 
 
 ## Auto-clear and triage mix (primary model)
 
-| Subset | Events | Auto-clear share | Final-Critical auto-cleared | Final Critical | Watch share | Final-Critical in watch | Maneuver review | Human review | Monitor |
-|---|---|---|---|---|---|---|---|---|---|
-| real_forecast | 1779 | 17.0% | 0 | 118 | 4.7% | 5 | 8.9% | 54.4% | 15.0% |
-| all_usable | 2389 | 14.4% | 0 | 167 | 4.6% | 5 | 9.4% | 57.2% | 14.4% |
-| trivial | 610 | 7.0% | 0 | 49 | 4.4% | 0 | 10.7% | 65.4% | 12.5% |
+| Subset | Events | Auto-clear share | Final-Critical auto-cleared | Final Critical | Watch share | Final-Critical in watch | Maneuver review | Human review | Monitor | Low-priority monitor | Final-Critical not urgent |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| real_forecast | 1779 | 17.0% | 0 | 118 | 4.7% | 5 | 8.9% | 54.4% | 15.0% | 0.0% | n/a (older artifacts) |
+| all_usable | 2389 | 14.4% | 0 | 167 | 4.6% | 5 | 9.4% | 57.2% | 14.4% | 0.0% | n/a (older artifacts) |
+| trivial | 610 | 7.0% | 0 | 49 | 4.4% | 0 | 10.7% | 65.4% | 12.5% | 0.0% | n/a (older artifacts) |
+
+Review workload = Maneuver planning review + Escalation watch + Human review. Auto-clear and low-priority monitor shares are *potential* workload reductions on the holdout, not demonstrated labour savings; an operator study has not been run.
 
 No event that ended Critical was auto-cleared on the holdout.
 
@@ -251,29 +253,34 @@ Point estimate followed by the 95 % event-bootstrap interval (2.5 / 97.5 percent
 
 ## Ablations (real_forecast holdout)
 
-| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Final Crit auto-cleared | Watch share | Escalation recall |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| lgbm_ordinal (primary) | 1779 | 0.907 | 0.673 | 0.848 | 0.919 | 0.838 | 0.108 | 0.204 | 17.0% | 0 | 4.7% | 0.750 |
-| use_past_risk_off | 1779 | 0.890 | 0.714 | 0.848 | 0.912 | 0.843 | 0.111 | 0.218 | 21.7% | 0 | 5.7% | 0.792 |
-| latest_only_training | 1779 | 0.847 | 0.719 | 0.818 | 0.922 | 0.853 | 0.116 | 0.231 | 27.7% | 1 | 5.1% | 0.750 |
-| no_history_features | 1779 | 0.881 | 0.712 | 0.841 | 0.920 | 0.853 | 0.113 | 0.226 | 24.7% | 1 | 5.6% | 0.750 |
+| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Human review | Final Crit auto-cleared | Watch share | Escalation recall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| lgbm_ordinal (primary) | 1779 | 0.907 | 0.673 | 0.848 | 0.919 | 0.838 | 0.108 | 0.204 | 17.0% | 54.4% | 0 | 4.7% | 0.750 |
+| use_past_risk_off | 1779 | 0.890 | 0.714 | 0.848 | 0.912 | 0.843 | 0.111 | 0.218 | 21.7% | 50.0% | 0 | 5.7% | 0.792 |
+| latest_only_training | 1779 | 0.847 | 0.719 | 0.818 | 0.922 | 0.853 | 0.116 | 0.231 | 27.7% | 45.3% | 1 | 5.1% | 0.750 |
+| no_history_features | 1779 | 0.881 | 0.712 | 0.841 | 0.920 | 0.853 | 0.113 | 0.226 | 24.7% | 48.3% | 1 | 5.6% | 0.750 |
 
 ## Mission-held-out cross-validation
 
 Out-of-fold predictions over all usable events with folds grouped by `mission_id` (mission_id is never a feature). This checks that the model is not memorising missions.
 
-| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Final Crit auto-cleared | Watch share | Escalation recall |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| mission_heldout_oof | 8892 | 0.902 | 0.673 | 0.844 | 0.920 | 0.835 | 0.111 | 0.208 | 11.3% | 0 | 5.4% | 0.759 |
+| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Human review | Final Crit auto-cleared | Watch share | Escalation recall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mission_heldout_oof | 8892 | 0.902 | 0.673 | 0.844 | 0.920 | 0.835 | 0.111 | 0.208 | 11.3% | 59.6% | 0 | 5.4% | 0.759 |
 
-| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Final Crit auto-cleared | Watch share | Escalation recall |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| mission_heldout_oof | 11942 | 0.929 | 0.700 | 0.872 | 0.930 | 0.848 | 0.100 | 0.189 | 9.4% | 0 | 5.1% | 0.759 |
+| Model | Events | Critical recall | Critical precision | Critical F2 | Elev+ F2 | Macro-F1 | Brier | Log loss | Auto-clear | Human review | Final Crit auto-cleared | Watch share | Escalation recall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mission_heldout_oof | 11942 | 0.929 | 0.700 | 0.872 | 0.930 | 0.848 | 0.100 | 0.189 | 9.4% | 62.2% | 0 | 5.1% | 0.759 |
 
 ## Conformal prediction sets
 
-Nominal coverage 0.900, empirical holdout coverage undefined, average set size undefined, q_hat 0.3155.
-On real_forecast events: coverage 0.929, average set size 1.00, singleton share 100.0%.
+Nominal coverage 0.900, q_hat 0.3155; empirical holdout coverage 0.938, average set size 1.00 (all usable events).
+
+real_forecast: marginal coverage 0.929, average set size 1.00, singleton share 100.0%.
+
+all_usable: marginal coverage 0.938, average set size 1.00, singleton share 100.0%.
+
+When every set is a singleton the sets carry no information beyond the point decision; marginal coverage above nominal then comes from the majority Safe class, and the class-conditional table above is the honest statement of what the sets guarantee. No class-conditional coverage guarantee is claimed.
 
 ## Illustrative cases (primary model, holdout)
 
@@ -315,11 +322,15 @@ None on the holdout.
 
 ## Test-set predictions (Kelvins test file)
 
-Predicted class distribution not available in manifest.json.
+| Predicted final tier | Events | Share |
+|---|---|---|
+| Safe | 1438 | 66.4% |
+| Elevated | 489 | 22.6% |
+| Critical | 240 | 11.1% |
 
 The Kelvins test set was enriched with high-risk events, so its predicted class distribution is expected to be shifted toward Elevated/Critical relative to the training labels.
 
-Batch run: status counts {"valid": 2002, "warning": 165}; triage counts {"Human review": 1074, "Auto-clear candidate": 352, "Monitor": 333, "Maneuver planning review": 240, "Escalation watch": 168}; batch inference 9.7 s.
+Batch run: 2167 events / 24484 snapshots; status counts {"valid": 2002, "warning": 165}; triage counts {"Human review": 1074, "Auto-clear candidate": 352, "Monitor": 333, "Maneuver planning review": 240, "Escalation watch": 168}; batch inference 9.7 s.
 
 ## Data and label audit
 
@@ -344,7 +355,7 @@ Batch run: status counts {"valid": 2002, "warning": 165}; triage counts {"Human 
 
 Training rows: `snapshots` chosen on dev OOF Critical F2 (real_forecast): snapshots = {'critical_recall': 0.8728813559322034, 'critical_precision': 0.7370304114490162, 'critical_f2': 0.8418471597874949, 'macro_f1': 0.8515030912165972}, latest = {'critical_recall': 0.8241525423728814, 'critical_precision': 0.7764471057884231, 'critical_f2': 0.8141481791544579, 'macro_f1': 0.8600351533370483}.
 
-Grouped CV search (undefined folds, 12 configurations, rule: max OOF Critical F2 on real_forecast latest snapshots (t=0.5), tie-break macro-F1). Best params `{"learning_rate": 0.04679255978730041, "num_leaves": 12, "min_child_samples": 190, "feature_fraction": 0.9498034588173512, "lambda_l2": 1.0}`, scores `{"critical_recall": 0.8728813559322034, "critical_precision": 0.7370304114490162, "critical_f2": 0.8418471597874949, "macro_f1": 0.8515030912165972}`.
+Grouped CV search (5 folds, 12 configurations, rule: max OOF Critical F2 on real_forecast latest snapshots (t=0.5), tie-break macro-F1). Best params `{"learning_rate": 0.04679255978730041, "num_leaves": 12, "min_child_samples": 190, "feature_fraction": 0.9498034588173512, "lambda_l2": 1.0}`, scores `{"critical_recall": 0.8728813559322034, "critical_precision": 0.7370304114490162, "critical_f2": 0.8418471597874949, "macro_f1": 0.8515030912165972}`.
 
 Decision thresholds (tuned on dev OOF only): `t_crit` = 0.200, `t_elev` = 0.300, `t_watch` = 0.030, `t_clear` = 0.999.
 
@@ -353,6 +364,7 @@ Policy tuning summary: `{"t_watch": 0.02976306754188084, "t_clear": 0.9994625934
 
 ## Notes
 
+- **These artifacts predate triage rule 7 (Low-priority monitor).** Under the current policy the predicted-Safe events below the auto-clear bar that appear here as Human review are routed to Low-priority monitor; rerun `train` and `predict` with the data in place to refresh the numbers.
 - Metrics are computed on the 20% event holdout of train_data only; test_data has no final outcomes and is used solely for demo predictions.
 - Trivial events (final CDM itself at >= 2 days) are reported separately from real_forecast events; headline numbers use real_forecast.
 - Probabilities are per-class isotonic-calibrated on dev out-of-fold predictions and renormalised; decision and triage thresholds are tuned on dev OOF only.

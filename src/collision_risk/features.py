@@ -285,13 +285,11 @@ def _cum_slope_and_std(ev: np.ndarray, t: np.ndarray, v: np.ndarray) -> tuple[np
     stv = np.where(ok, t * v, 0.0)
     stt = np.where(ok, t * t, 0.0)
     svv = np.where(ok, v * v, 0.0)
-    # segment cumulative sums: global cumsum minus the value just before each segment start
+    # Per-event cumulative sums computed WITHIN each event block. (A global cumsum minus the
+    # segment base is cheaper but leaks floating-point rounding from other events in the batch,
+    # so a single uploaded event and the same event inside a batch could differ in the last digits.)
     def seg_cumsum(x: np.ndarray) -> np.ndarray:
-        c = np.cumsum(x)
-        starts = np.r_[True, ev[1:] != ev[:-1]]
-        offset = np.maximum.accumulate(np.where(starts, np.arange(len(x)), 0))
-        base = (c - x)[offset]
-        return c - base
+        return pd.Series(x).groupby(ev, sort=False).cumsum().to_numpy(dtype=float)
     cn, cst, csv_, cstv, cstt, csvv = (seg_cumsum(a) for a in (n, st, sv, stv, stt, svv))
     with np.errstate(invalid="ignore", divide="ignore"):
         denom = cn * cstt - cst ** 2
@@ -309,10 +307,9 @@ def _cum_moves(ev: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     d = np.where(same & np.isfinite(v) & np.isfinite(prev), v - prev, 0.0)
     up = (d > 0).astype(float)
     down = (d < 0).astype(float)
-    starts = np.r_[True, ev[1:] != ev[:-1]]
-    idx = np.maximum.accumulate(np.where(starts, np.arange(len(v)), 0))
-    cu = np.cumsum(up); cd = np.cumsum(down)
-    return cu - (cu - up)[idx], cd - (cd - down)[idx]
+    cu = pd.Series(up).groupby(ev, sort=False).cumsum().to_numpy(dtype=float)
+    cd = pd.Series(down).groupby(ev, sort=False).cumsum().to_numpy(dtype=float)
+    return cu, cd
 
 
 def build_event_snapshots(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:

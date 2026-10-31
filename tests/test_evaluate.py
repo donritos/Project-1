@@ -453,3 +453,15 @@ def test_make_results_main_writes_report(tmp_path, frame, cfg):
     (tmp_path / "evaluation.json").write_text("{}", encoding="utf-8")
     out2 = mod.main(tmp_path, tmp_path / "RESULTS2.md")
     assert "undefined" in Path(out2).read_text(encoding="utf-8")
+
+
+def test_triage_action_by_final_tier_table_balances(frame):
+    t = triage_metrics(frame)
+    table = t["action_by_final_tier"]
+    assert sum(sum(v.values()) for v in table.values()) == len(frame)
+    assert set(t["action_counts"]) == set(table)
+    for a, cnt in t["action_counts"].items():
+        assert sum(table[a].values()) == cnt
+    assert t["n_final_critical_in_human_review"] == table.get(HUMAN, {}).get("Critical", 0) + table.get(HUMAN_INSUFF, {}).get("Critical", 0)
+    assert t["review_workload_share"] == pytest.approx(
+        sum(t["action_shares"].get(a, 0.0) for a in (MANEUVER, WATCH, HUMAN, HUMAN_INSUFF)))

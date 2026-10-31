@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.0.0",
-  "feature_version": "features-v1",
-  "policy_version": "policy-v1",
+  "schema_version": "2.0.0",
+  "feature_version": "features-v2-final-tier",
+  "policy_version": "policy-v2-event",
   "dataset_ids": {
     "train": "kelvins_train",
     "test": "kelvins_test"
@@ -9,8 +9,12 @@
   "paths": {
     "raw_train": "data/raw/train_data.csv",
     "raw_test": "data/raw/test_data.csv",
+    "event_labels": "data/raw/challenge1_event_labels.xlsx",
     "processed_dir": "data/processed",
     "artifacts_dir": "artifacts"
+  },
+  "horizon": {
+    "min_days": 2.0
   },
   "units": {
     "miss_distance": "m",
@@ -62,6 +66,8 @@
     "distance_band_inclusive": true
   },
   "features": {
+    "use_past_risk": true,
+    "history_enabled": true,
     "epsilon_m": 1.0,
     "sigma_floor_m": 0.01,
     "speed_floor_mps": 0.1,
@@ -73,65 +79,64 @@
       "PAYLOAD",
       "ROCKET BODY",
       "TBA"
-    ],
-    "history_enabled": true
+    ]
   },
   "split": {
     "seed": 42,
-    "dev": 0.6,
-    "policy_cal": 0.15,
-    "conformal_cal": 0.1,
-    "eval": 0.15,
-    "test_horizon_min_days": 2.0
+    "holdout": 0.2,
+    "cv_folds": 5
   },
   "model": {
-    "objective_candidates": [
-      "l1",
-      "l2"
-    ],
-    "n_search": 10,
-    "cv_folds": 5,
+    "training_rows": "auto",
+    "class_weight_cap": 10.0,
+    "n_search": 12,
     "learning_rate": [
-      0.03,
-      0.05
+      0.02,
+      0.06
     ],
     "num_leaves": [
-      15,
+      7,
       31
     ],
     "min_child_samples": [
-      50,
+      30,
       200
     ],
     "feature_fraction": [
-      0.8,
+      0.7,
       1.0
     ],
     "lambda_l2": [
       0.0,
+      1.0,
       10.0
     ],
-    "max_rounds": 1000,
-    "early_stopping_rounds": 50,
-    "target_floor": -30.0
+    "max_rounds": 3000,
+    "early_stopping_rounds": 100,
+    "target_floor": -30.0,
+    "num_threads": 0
   },
-  "conformal": {
+  "calibration": {
+    "method": "isotonic"
+  },
+  "conformal_sets": {
+    "enabled": true,
     "coverage": 0.9,
-    "min_calibration_events": 30
+    "method": "lac"
   },
   "triage": {
-    "review_upper_threshold": -4.0,
-    "auto_clear_upper_threshold": -6.0,
-    "classifier_disagreement_prob": 0.5,
+    "watch_max_share": 0.05,
+    "deescalation_p_critical": 0.5,
+    "auto_clear_zero_missed": true,
+    "trends": {
+      "miss_shrink_slope": 0.02,
+      "risk_rise_slope": -0.1,
+      "sigma_grow_slope": -0.05,
+      "mre_volatility": 0.5,
+      "risk_volatility": 1.5
+    },
     "auto_clear_allowed_flags": [
       "MISSING_SPACE_WEATHER"
-    ]
-  },
-  "interval": {
-    "method": "cqr",
-    "quantile_alphas": [
-      0.05,
-      0.95
     ]
   }
 }

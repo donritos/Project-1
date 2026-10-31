@@ -12,7 +12,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "2.0.0"
 
 
 class RiskTier(str, Enum):
@@ -25,6 +25,7 @@ class TriageAction(str, Enum):
     HUMAN_REVIEW_INSUFFICIENT_DATA = "Human review - insufficient data"
     MANEUVER_PLANNING_REVIEW = "Maneuver planning review"
     HUMAN_REVIEW = "Human review"
+    ESCALATION_WATCH = "Escalation watch"
     MONITOR = "Monitor"
     AUTO_CLEAR_CANDIDATE = "Auto-clear candidate"
 
@@ -51,6 +52,22 @@ class ReasonCode(str, Enum):
     INVALID_INPUT = "INVALID_INPUT"                # required geometry missing/invalid
     MISSING_TELEMETRY = "MISSING_TELEMETRY"        # optional predictor missing
     NO_HISTORY = "NO_HISTORY"                      # standalone CDM, history features defaulted
+    # Event-level forecast conditions (final-tier task)
+    FORECAST_CRITICAL = "FORECAST_CRITICAL"        # predicted final tier is Critical
+    FORECAST_ELEVATED = "FORECAST_ELEVATED"        # predicted final tier is Elevated
+    FORECAST_SAFE = "FORECAST_SAFE"                # predicted final tier is Safe
+    CURRENT_TIER_CRITICAL = "CURRENT_TIER_CRITICAL"
+    CURRENT_TIER_ELEVATED = "CURRENT_TIER_ELEVATED"
+    RISK_RISING = "RISK_RISING"
+    MISS_SHRINKING = "MISS_SHRINKING"
+    SIGMA_GROWING = "SIGMA_GROWING"
+    HIGH_VOLATILITY = "HIGH_VOLATILITY"
+    ESCALATION_RISK = "ESCALATION_RISK"            # P(Critical) >= t_watch while not predicted Critical
+    DEESCALATION_CLAIM = "DEESCALATION_CLAIM"      # current Critical, predicted lower
+    MODEL_CARRY_FORWARD_DISAGREE = "MODEL_CARRY_FORWARD_DISAGREE"  # two-tier disagreement
+    AMBIGUOUS_PREDICTION_SET = "AMBIGUOUS_PREDICTION_SET"          # conformal set has non-adjacent classes
+    LOW_CONFIDENCE_SAFE = "LOW_CONFIDENCE_SAFE"    # predicted Safe but P(Safe) < t_clear
+    CURRENT_TIER_NOT_SAFE = "CURRENT_TIER_NOT_SAFE"  # blocks auto-clear
 
 
 class QualityFlag(str, Enum):
@@ -152,3 +169,44 @@ PREDICTION_COLUMNS: list[str] = list(PredictionRecord.model_fields.keys())
 
 def validate_prediction_rows(rows: list[dict]) -> list[PredictionRecord]:
     return [PredictionRecord.model_validate(r) for r in rows]
+
+
+class EventForecastRecord(BaseModel):
+    """One record per event (or per snapshot) for the final-tier forecasting task.
+    Probabilities are calibrated and sum to 1; None for invalid rows."""
+
+    schema_version: str = SCHEMA_VERSION
+    dataset_id: str
+    event_id: int
+    row_id: str                              # snapshot CDM that the forecast was made from
+    time_to_tca_days: Optional[float]
+    miss_distance_m: Optional[float]
+    is_latest_snapshot: bool
+    n_cdms_2d: int
+    has_history: int
+    current_tier: Optional[str]
+    current_tier_source: str                 # "risk" | "mre"
+    latest_risk: Optional[float]
+    prediction_status: PredictionStatus
+    quality_flags: list[str] = Field(default_factory=list)
+    p_safe: Optional[float]
+    p_elevated: Optional[float]
+    p_critical: Optional[float]
+    predicted_final_tier: Optional[RiskTier]
+    prediction_set: Optional[list[str]] = None
+    triage_action: TriageAction
+    reason_codes: list[str] = Field(default_factory=list)
+    explanation_id: Optional[str]
+    model_version: str
+    feature_version: str
+    policy_version: str
+
+    @field_validator("p_safe", "p_elevated", "p_critical")
+    @classmethod
+    def _prob_in_unit_interval(cls, v):
+        if v is not None and not (-1e-9 <= v <= 1 + 1e-9):
+            raise ValueError("probabilities must be in [0, 1]")
+        return v
+
+
+EVENT_FORECAST_COLUMNS: list[str] = list(EventForecastRecord.model_fields.keys())

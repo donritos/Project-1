@@ -1,32 +1,42 @@
-"""Tests for collision_risk.evaluate."""
+"""Tests for collision_risk.evaluate (final-tier forecast evaluation) and scripts/make_results.py."""
 from __future__ import annotations
 
+import importlib.util
 import json
 import math
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.metrics import f1_score, log_loss
 
 from collision_risk.config import load_config
 from collision_risk.evaluate import (
-    CONFUSION_LABELS,
+    TIERS,
+    bootstrap_cis,
+    breakdown_by,
+    classification_metrics,
     compare_models,
-    evaluate_predictions,
+    escalation_metrics,
+    evaluate_forecasts,
     find_illustrative_cases,
-    latest_cdm_view,
-    tier_metrics,
+    latest_snapshot_view,
+    lead_time_breakdown,
+    probability_metrics,
     to_jsonable,
+    triage_metrics,
 )
 
-FLOOR = -30.0
-CRIT = -4.0
-ELEV = -6.0
+ROOT = Path(__file__).resolve().parents[1]
+
 AUTO = "Auto-clear candidate"
 HUMAN = "Human review"
 HUMAN_INSUFF = "Human review - insufficient data"
 MANEUVER = "Maneuver planning review"
 MONITOR = "Monitor"
+WATCH = "Escalation watch"
+S, E, C = "Safe", "Elevated", "Critical"
 
 
 # --------------------------------------------------------------------------- #
@@ -37,560 +47,409 @@ def cfg() -> dict:
     return load_config()
 
 
-def _tier_from_rule(risk: float, miss: float) -> str:
-    if risk >= CRIT or miss < 1000.0:
-        return "Critical"
-    if risk >= ELEV or miss <= 5000.0:
-        return "Elevated"
-    return "Safe"
-
-
-def make_frame(n_events: int = 200, seed: int = 123) -> pd.DataFrame:
-    """Synthetic prediction frame: ~10 rows per event with distinct time_to_tca,
-    a floor mass at -30, a handful of true Critical events, NaN intervals on some
-    rows, a few invalid rows, and a predictor that is noisy but informative."""
-    rng = np.random.default_rng(seed)
-    rows = []
-    for ev in range(n_events):
-        n_cdm = int(rng.integers(6, 14))
-        ttca = np.sort(rng.uniform(0.1, 7.0, size=n_cdm))[::-1]  # decreasing towards TCA
-        kind = rng.choice(["floor", "safe", "elevated", "critical"], p=[0.41, 0.40, 0.15, 0.04])
-        if kind == "floor":
-            base_true = FLOOR
-        elif kind == "safe":
-            base_true = rng.uniform(-12.0, -6.5)
-        elif kind == "elevated":
-            base_true = rng.uniform(-5.9, -4.3)
-        else:
-            base_true = rng.uniform(-3.9, -2.0)
-        for j, t in enumerate(ttca):
-            if base_true == FLOOR:
-                risk_true = FLOOR
-                risk_pred = rng.choice([FLOOR, rng.uniform(-14.0, -9.0)], p=[0.7, 0.3])
-            else:
-                risk_true = base_true + rng.normal(0, 0.15)
-                risk_pred = risk_true + rng.normal(0, 0.6)
-            miss = float(rng.uniform(6000.0, 60000.0))
-            has_int = rng.random() > 0.15
-            lower = risk_pred - rng.uniform(0.5, 2.5) if has_int else np.nan
-            upper = risk_pred + rng.uniform(0.5, 2.5) if has_int else np.nan
-            rows.append(
-                {
-                    "event_id": ev,
-                    "time_to_tca_days": float(t),
-                    "miss_distance_m": miss,
-                    "risk_true": float(risk_true),
-                    "risk_log10_pred": float(risk_pred),
-                    "risk_log10_lower": lower,
-                    "risk_log10_upper": upper,
-                    "prediction_status": "valid",
-                    "p_pc_critical": float(np.clip(1.0 / (1.0 + np.exp(-(risk_pred + 4.0) * 2.0)) + rng.normal(0, 0.05), 0, 1)),
-                }
-            )
-    df = pd.DataFrame(rows)
-
-    # A few hard-coded geometry cases: distance rule drives Critical on some rows.
-    df.loc[df.index[:5], "miss_distance_m"] = 500.0
-    # A few invalid rows
-    inv = df.index[10:15]
-    df.loc[inv, "prediction_status"] = "invalid"
-
-    df["risk_tier_true"] = [
-        _tier_from_rule(r, m) for r, m in zip(df["risk_true"], df["miss_distance_m"])
-    ]
-    df["risk_tier"] = [
-        None if s == "invalid" else _tier_from_rule(r, m)
-        for r, m, s in zip(df["risk_log10_pred"], df["miss_distance_m"], df["prediction_status"])
-    ]
-    df.loc[inv, "risk_log10_pred"] = np.nan
-    df.loc[inv, ["risk_log10_lower", "risk_log10_upper"]] = np.nan
-
-    def action(row):
-        if row["prediction_status"] == "invalid":
-            return HUMAN_INSUFF
-        if row["risk_tier"] == "Critical":
-            return MANEUVER
-        if not math.isnan(row["risk_log10_upper"]) and row["risk_log10_upper"] >= CRIT:
-            return HUMAN
-        if row["risk_tier"] == "Elevated":
-            return MONITOR
-        if math.isnan(row["risk_log10_upper"]) or row["risk_log10_upper"] >= ELEV:
-            return MONITOR
+def _triage(pred, cur, p_safe, p_crit):
+    if pred is None:
+        return HUMAN_INSUFF
+    if pred == C:
+        return MANEUVER
+    if cur == C:
+        return HUMAN
+    if p_crit >= 0.2:
+        return WATCH
+    if pred == S and p_safe >= 0.9:
         return AUTO
+    if pred == E:
+        return MONITOR
+    return HUMAN
 
-    df["triage_action"] = df.apply(action, axis=1)
+
+def make_forecast_frame(n_events: int = 600, seed: int = 7, n_invalid: int = 5) -> pd.DataFrame:
+    """Synthetic latest-snapshot frame: ~7 % final Critical, current tier mostly equal
+    to the final tier with some escalations / de-escalations, ~25 % trivial events,
+    probabilities roughly consistent with the predictions, rule-based triage actions,
+    and a few invalid rows (no prediction, NaN probabilities)."""
+    rng = np.random.default_rng(seed)
+    n = n_events
+    final = rng.choice(TIERS, size=n, p=[0.68, 0.25, 0.07]).astype(object)
+    current = final.copy()
+    for i in np.flatnonzero(rng.random(n) < 0.2):
+        current[i] = rng.choice([t for t in TIERS if t != final[i]])
+    is_trivial = rng.random(n) < 0.25
+    current[is_trivial] = final[is_trivial]
+
+    final_idx = np.asarray([TIERS.index(t) for t in final])
+    P = rng.dirichlet([1.0, 1.0, 1.0], size=n)
+    boost = np.where(rng.random(n) < 0.75, final_idx, rng.integers(0, 3, size=n))
+    P[np.arange(n), boost] += rng.uniform(1.0, 3.0, size=n)
+    P /= P.sum(axis=1, keepdims=True)
+    pred = np.asarray([TIERS[i] for i in P.argmax(axis=1)], dtype=object)
+
+    ttca = rng.uniform(2.0, 7.0, size=n)
+    obj = rng.choice(["DEBRIS", "PAYLOAD", "UNKNOWN", "ROCKET BODY", "TBA"], size=n, p=[0.6, 0.2, 0.15, 0.04, 0.01])
+
+    df = pd.DataFrame({
+        "dataset_id": "kelvins_train",
+        "event_id": np.arange(n),
+        "row_id": [f"kelvins_train:{i}" for i in range(n)],
+        "time_to_tca_days": ttca,
+        "miss_distance_m": 10 ** rng.uniform(2.5, 4.8, size=n),
+        "is_latest_snapshot": True,
+        "n_cdms_2d": rng.integers(1, 12, size=n),
+        "current_tier": current,
+        "carry_forward_tier": current,
+        "prediction_status": "valid",
+        "p_safe": P[:, 0], "p_elevated": P[:, 1], "p_critical": P[:, 2],
+        "predicted_final_tier": pred,
+        "final_tier": final,
+        "is_trivial": is_trivial,
+        "object_type": obj,
+        "mission_id": rng.integers(1, 6, size=n),
+        "split": "holdout",
+    })
+    df["prediction_set"] = [[t for t, p in zip(TIERS, row) if 1.0 - p <= 0.7] for row in P]
+    inv = rng.choice(n, size=n_invalid, replace=False)
+    df.loc[inv, ["p_safe", "p_elevated", "p_critical"]] = np.nan
+    df["predicted_final_tier"] = df["predicted_final_tier"].astype(object)
+    df.loc[inv, "predicted_final_tier"] = None
+    df.loc[inv, "prediction_status"] = "invalid"
+    df["prediction_set"] = df["prediction_set"].astype(object)
+    df.loc[inv, "prediction_set"] = None
+    df["triage_action"] = [
+        _triage(p, c, ps, pc)
+        for p, c, ps, pc in zip(df["predicted_final_tier"], df["current_tier"], df["p_safe"], df["p_critical"])
+    ]
+    df["reason_codes"] = [["FORECAST_" + str(p).upper()] if p else ["INVALID_INPUT"] for p in df["predicted_final_tier"]]
     return df
 
 
 @pytest.fixture(scope="module")
 def frame() -> pd.DataFrame:
-    return make_frame()
-
-
-@pytest.fixture(scope="module")
-def result(frame, cfg) -> dict:
-    return evaluate_predictions(frame, cfg, n_bootstrap=100, seed=1, scope={"model": "test"})
+    return make_forecast_frame()
 
 
 # --------------------------------------------------------------------------- #
-# latest_cdm_view
+# Views
 # --------------------------------------------------------------------------- #
-def test_frame_shape(frame):
-    assert 1500 <= len(frame) <= 2800
-    assert frame["event_id"].nunique() == 200
-
-
-def test_latest_cdm_view_picks_min_ttca_per_event(frame):
-    view = latest_cdm_view(frame)
-    assert len(view) == frame["event_id"].nunique()
-    assert view["event_id"].is_unique
-    assert list(view.columns) == list(frame.columns)
-    expected = frame.groupby("event_id")["time_to_tca_days"].min()
-    got = view.set_index("event_id")["time_to_tca_days"]
-    pd.testing.assert_series_equal(got.sort_index(), expected.sort_index(), check_names=False)
-
-
-def test_latest_cdm_view_tie_breaks_last_occurrence():
-    df = pd.DataFrame(
-        {
-            "event_id": [1, 1, 1, 2, 2],
-            "time_to_tca_days": [2.0, 1.0, 1.0, 3.0, np.nan],
-            "tag": ["a", "b", "c", "d", "e"],
-        }
-    )
-    view = latest_cdm_view(df)
-    assert view.set_index("event_id")["tag"].to_dict() == {1: "c", 2: "d"}
-
-
-def test_latest_cdm_view_empty():
-    df = pd.DataFrame({"event_id": [], "time_to_tca_days": []})
-    assert len(latest_cdm_view(df)) == 0
+def test_latest_snapshot_view_uses_flag_or_min_time():
+    df = pd.DataFrame({
+        "dataset_id": ["a"] * 3 + ["b"] * 2,
+        "event_id": [1, 1, 1, 1, 1],
+        "time_to_tca_days": [5.0, 3.0, 2.5, 4.0, 2.0],
+        "is_latest_snapshot": [False, False, True, False, True],
+    })
+    v = latest_snapshot_view(df)
+    assert v.index.tolist() == [2, 4]
+    v2 = latest_snapshot_view(df.drop(columns=["is_latest_snapshot"]))
+    assert v2.index.tolist() == [2, 4]
+    assert len(latest_snapshot_view(df.iloc[0:0])) == 0
 
 
 # --------------------------------------------------------------------------- #
-# tier_metrics
+# Classification metrics
 # --------------------------------------------------------------------------- #
-def test_tier_metrics_hand_computed():
-    y_true = ["Critical", "Critical", "Elevated", "Safe", "Safe", None]
-    y_pred = ["Critical", "Elevated", "Elevated", "Safe", "Critical", np.nan]
-    m = tier_metrics(y_true, y_pred)
-
-    assert m["critical_recall"] == pytest.approx(0.5)
-    assert m["critical_precision"] == pytest.approx(0.5)
-    assert m["critical_f2"] == pytest.approx(0.5)  # 5*.25/(4*.5+.5)
+def test_classification_metrics_hand_computed():
+    y_true = [C, C, C, E, E, S, S, S]
+    y_pred = [C, E, C, E, C, S, S, E]
+    m = classification_metrics(y_true, y_pred)
+    assert m["confusion"]["labels"] == TIERS
+    assert m["confusion"]["counts"] == [[2, 1, 0], [0, 1, 1], [0, 1, 2]]
+    assert m["confusion"]["row_normalised"][0] == pytest.approx([2 / 3, 1 / 3, 0.0])
+    assert m["critical_recall"] == pytest.approx(2 / 3)
+    assert m["critical_precision"] == pytest.approx(2 / 3)
+    assert m["critical_f2"] == pytest.approx(2 / 3)
+    assert m["accuracy"] == pytest.approx(5 / 8)
     assert m["elevated_or_above_recall"] == pytest.approx(1.0)
-    assert m["elevated_or_above_precision"] == pytest.approx(0.75)
-    assert m["elevated_or_above_f2"] == pytest.approx(0.9375)  # 5*.75/(3+1)
-    # per-class f1: Critical .5, Elevated 2/3, Safe 2/3
-    assert m["macro_f1"] == pytest.approx((0.5 + 2 / 3 + 2 / 3) / 3)
-    assert m["confusion"]["labels"] == CONFUSION_LABELS == ["Critical", "Elevated", "Safe", "Invalid"]
-    assert m["confusion"]["matrix"] == [
-        [1, 1, 0, 0],
-        [0, 1, 0, 0],
-        [1, 0, 1, 0],
-        [0, 0, 0, 1],
-    ]
+    assert m["elevated_or_above_precision"] == pytest.approx(5 / 6)
+    assert m["elevated_or_above_f2"] == pytest.approx(25 / 26)
+    assert m["per_class"]["Critical"]["support"] == 3
+    assert m["per_class"]["Safe"]["precision"] == pytest.approx(1.0)
+    assert m["macro_f1"] == pytest.approx(f1_score(y_true, y_pred, average="macro"))
     assert m["undefined"] == []
 
 
-def test_tier_metrics_undefined_when_no_true_critical():
-    y_true = ["Safe", "Elevated", "Safe"]
-    y_pred = ["Safe", "Elevated", "Safe"]
-    m = tier_metrics(y_true, y_pred)
-    assert m["critical_recall"] is None
-    assert m["critical_precision"] is None
-    assert m["critical_f2"] is None
-    assert set(m["undefined"]) == {"critical_recall", "critical_precision", "critical_f2"}
-    assert m["elevated_or_above_recall"] == 1.0
+def test_classification_invalid_predictions_count_as_wrong_not_safe():
+    y_true = [S, S, C, E]
+    y_pred = [None, float("nan"), C, "Invalid"]
+    m = classification_metrics(y_true, y_pred)
+    assert m["confusion"]["pred_labels"] == TIERS + ["Invalid"]
+    assert m["n_invalid_pred"] == 3
+    counts = np.asarray(m["confusion"]["counts"])
+    assert counts.shape == (3, 4)
+    assert counts[0].tolist() == [0, 0, 0, 2]  # Safe truths NOT counted as Safe predictions
+    assert m["accuracy"] == pytest.approx(0.25)
+    assert m["per_class"]["Safe"]["recall"] == 0.0
+    assert m["per_class"]["Safe"]["precision"] is None
+    assert "per_class.Safe.precision" in m["undefined"]
 
 
-def test_evaluate_all_none_with_undefined_list_when_no_critical(cfg):
-    df = make_frame(n_events=40, seed=7)
-    df = df[df["risk_tier_true"] != "Critical"].copy()
-    df["risk_tier"] = df["risk_tier"].where(df["risk_tier"] != "Critical", "Elevated")
-    df["risk_log10_pred"] = df["risk_log10_pred"].clip(upper=-4.5)
-    res = evaluate_predictions(df, cfg, n_bootstrap=20)
-    for view in ("row_level", "latest_cdm", "horizon_slice", "horizon_latest_cdm"):
-        t = res[view]["tier"]
-        assert res[view]["n_critical_true"] == 0
-        assert t["critical_recall"] is None and t["critical_precision"] is None and t["critical_f2"] is None
-        assert "critical_recall" in t["undefined"]
-        assert res[view]["pc_only"]["critical_recall"] is None
-        assert "critical_recall" in res[view]["pc_only"]["undefined"]
-        assert res[view]["triage"]["true_critical_routed_to_auto_clear_fraction"] is None
-        assert "true_critical_routed_to_auto_clear_fraction" in res[view]["triage"]["undefined"]
-        assert res[view]["bootstrap"]["critical_recall"] == {"lower": None, "upper": None}
-        assert "critical_recall" in res[view]["bootstrap"]["undefined"]
-    json.dumps(res)
+def test_classification_no_critical_is_undefined():
+    m = classification_metrics([S, E, S, E], [S, E, E, S])
+    assert m["critical_recall"] is None and m["critical_precision"] is None and m["critical_f2"] is None
+    assert {"critical_recall", "critical_precision", "critical_f2"} <= set(m["undefined"])
+    assert m["confusion"]["row_normalised"][2] is None
+    assert m["macro_f1"] is not None  # averaged over the tiers that occur
+    # empty input: everything undefined, nothing crashes
+    e = classification_metrics([], [])
+    assert e["n"] == 0 and e["accuracy"] is None and e["macro_f1"] is None
+    assert e["confusion"]["counts"] == [[0, 0, 0]] * 3
 
 
 # --------------------------------------------------------------------------- #
-# pc_only vs tier
+# Probability metrics
 # --------------------------------------------------------------------------- #
-def test_pc_only_differs_when_distance_rule_drives_critical(cfg):
-    # Distance rule makes rows Critical in both true and predicted tier even
-    # though risk is far below -4 -> tier metrics are perfect, pc_only undefined.
-    df = pd.DataFrame(
-        {
-            "event_id": [1, 1, 2, 2, 3, 3],
-            "time_to_tca_days": [3.0, 1.0, 3.0, 1.0, 3.0, 1.0],
-            "miss_distance_m": [500.0, 500.0, 20000.0, 20000.0, 500.0, 20000.0],
-            "risk_true": [-9.0, -9.0, -10.0, -10.0, -8.0, -3.5],
-            "risk_log10_pred": [-9.5, -8.8, -10.2, -9.9, -8.5, -5.0],
-            "risk_tier_true": ["Critical", "Critical", "Safe", "Safe", "Critical", "Critical"],
-            "risk_tier": ["Critical", "Critical", "Safe", "Safe", "Critical", "Elevated"],
-            "risk_log10_lower": [np.nan] * 6,
-            "risk_log10_upper": [np.nan] * 6,
-            "triage_action": [MANEUVER, MANEUVER, AUTO, AUTO, MANEUVER, MONITOR],
-            "prediction_status": ["valid"] * 6,
-        }
-    )
-    res = evaluate_predictions(df, cfg, n_bootstrap=10)
-    rl = res["row_level"]
-    assert rl["tier"]["critical_recall"] == pytest.approx(3 / 4)
-    assert rl["tier"]["critical_precision"] == pytest.approx(1.0)
-    # pc_only: only row 5 is truly >= -4; predicted -5.0 is not -> recall 0, no predicted positives
-    assert rl["pc_only"]["critical_recall"] == 0.0
-    assert rl["pc_only"]["critical_precision"] is None
-    assert rl["pc_only"]["critical_f2"] == 0.0
-    assert rl["pc_only"]["n_true_positive_rows"] == 0
-    assert rl["pc_only"]["critical_recall"] != rl["tier"]["critical_recall"]
-    assert "critical_precision" in rl["pc_only"]["undefined"]
+def test_probability_metrics_match_manual_and_sklearn(frame):
+    P = frame[["p_safe", "p_elevated", "p_critical"]].to_numpy()
+    y = frame["final_tier"].to_numpy()
+    m = probability_metrics(P, y)
+    valid = ~np.isnan(P).any(axis=1)
+    assert m["n_used"] == int(valid.sum()) and m["n_excluded"] == int((~valid).sum())
+    Pv, yv = P[valid], y[valid]
+    onehot = np.zeros_like(Pv)
+    onehot[np.arange(len(yv)), [TIERS.index(t) for t in yv]] = 1.0
+    assert m["brier"] == pytest.approx(float(np.mean(((Pv - onehot) ** 2).sum(axis=1))))
+    # sklearn wants lexicographic label order: Critical, Elevated, Safe
+    assert m["log_loss"] == pytest.approx(log_loss(yv, Pv[:, [2, 1, 0]], labels=sorted(TIERS)), rel=1e-6)
+    assert sum(m["per_class_brier"].values()) == pytest.approx(m["brier"])
+    rel = m["reliability"]["Critical"]
+    assert sum(rel["count"]) == m["n_used"]
+    assert len(rel["mean_pred"]) == 10
+    for mp, fp, n in zip(rel["mean_pred"], rel["frac_pos"], rel["count"]):
+        assert (n == 0) == (mp is None) == (fp is None)
+    assert 0.0 <= rel["ece"] <= 1.0
+    assert 0.0 <= m["critical_pr_auc"] <= 1.0
+    assert m["undefined"] == []
 
 
-# --------------------------------------------------------------------------- #
-# Regression / interval / triage metrics
-# --------------------------------------------------------------------------- #
-def test_regression_metrics_match_numpy(frame, result):
-    rl = result["row_level"]["regression"]
-    valid = frame["risk_true"].notna() & frame["risk_log10_pred"].notna()
-    err = (frame.loc[valid, "risk_log10_pred"] - frame.loc[valid, "risk_true"]).to_numpy()
-    assert rl["mae"] == pytest.approx(np.mean(np.abs(err)))
-    assert rl["rmse"] == pytest.approx(np.sqrt(np.mean(err ** 2)))
-
-    rt = frame.loc[valid, "risk_true"].to_numpy()
-    nf = rt > FLOOR
-    hr = rt >= ELEV
-    assert rl["n_non_floor"] == int(nf.sum())
-    assert rl["n_high_risk"] == int(hr.sum())
-    assert rl["mae_non_floor"] == pytest.approx(np.mean(np.abs(err[nf])))
-    assert rl["rmse_non_floor"] == pytest.approx(np.sqrt(np.mean(err[nf] ** 2)))
-    assert rl["mae_high_risk"] == pytest.approx(np.mean(np.abs(err[hr])))
-    assert rl["rmse_high_risk"] == pytest.approx(np.sqrt(np.mean(err[hr] ** 2)))
-    assert rl["undefined"] == []
-    # floor rows exist and are excluded from non-floor
-    assert result["counts"]["n_floor_rows"] > 0
-    assert rl["n_non_floor"] < result["counts"]["n_rows"]
-
-
-def test_regression_subsets_hand_example(cfg):
-    df = pd.DataFrame(
-        {
-            "event_id": [1, 2, 3, 4],
-            "time_to_tca_days": [1.0, 1.0, 1.0, 1.0],
-            "miss_distance_m": [1e4] * 4,
-            "risk_true": [-30.0, -8.0, -5.0, -3.0],
-            "risk_log10_pred": [-29.0, -10.0, -5.5, -3.5],
-            "risk_tier_true": ["Safe", "Safe", "Elevated", "Critical"],
-            "risk_tier": ["Safe", "Safe", "Elevated", "Critical"],
-            "risk_log10_lower": [np.nan] * 4,
-            "risk_log10_upper": [np.nan] * 4,
-            "triage_action": [AUTO, AUTO, MONITOR, MANEUVER],
-            "prediction_status": ["valid"] * 4,
-        }
-    )
-    r = evaluate_predictions(df, cfg, n_bootstrap=5)["row_level"]["regression"]
-    assert r["mae"] == pytest.approx((1 + 2 + 0.5 + 0.5) / 4)
-    assert r["n_non_floor"] == 3
-    assert r["mae_non_floor"] == pytest.approx((2 + 0.5 + 0.5) / 3)
-    assert r["n_high_risk"] == 2
-    assert r["mae_high_risk"] == pytest.approx(0.5)
-    assert r["rmse_high_risk"] == pytest.approx(0.5)
-
-
-def test_interval_coverage_excludes_nan(cfg):
-    df = pd.DataFrame(
-        {
-            "event_id": [1, 2, 3, 4, 5],
-            "time_to_tca_days": [1.0] * 5,
-            "miss_distance_m": [1e4] * 5,
-            "risk_true": [-8.0, -8.0, -8.0, -8.0, -8.0],
-            "risk_log10_pred": [-8.0] * 5,
-            "risk_tier_true": ["Safe"] * 5,
-            "risk_tier": ["Safe"] * 5,
-            "risk_log10_lower": [-9.0, -9.0, -7.5, np.nan, -9.0],
-            "risk_log10_upper": [-7.0, -7.0, -6.0, -7.0, np.nan],
-            "triage_action": [AUTO] * 5,
-            "prediction_status": ["valid"] * 5,
-        }
-    )
-    res = evaluate_predictions(df, cfg, n_bootstrap=5)
-    iv = res["row_level"]["interval"]
-    assert iv["nominal_coverage"] == pytest.approx(cfg["conformal"]["coverage"])
-    assert iv["n_with_interval"] == 3
-    assert iv["fraction_with_interval"] == pytest.approx(3 / 5)
-    assert iv["coverage"] == pytest.approx(2 / 3)
-    assert iv["median_width"] == pytest.approx(2.0)  # widths 2, 2, 1.5
-
-
-def test_interval_coverage_matches_manual(frame, result):
-    iv = result["row_level"]["interval"]
-    has = frame["risk_log10_lower"].notna() & frame["risk_log10_upper"].notna()
-    cov = (frame.loc[has, "risk_log10_lower"] <= frame.loc[has, "risk_true"]) & (
-        frame.loc[has, "risk_true"] <= frame.loc[has, "risk_log10_upper"]
-    )
-    assert iv["n_with_interval"] == int(has.sum())
-    assert iv["fraction_with_interval"] == pytest.approx(has.mean())
-    assert iv["coverage"] == pytest.approx(cov.mean())
-    assert 0 < iv["fraction_with_interval"] < 1
-
-
-def test_triage_metrics(cfg):
-    df = pd.DataFrame(
-        {
-            "event_id": [1, 2, 3, 4, 5, 6],
-            "time_to_tca_days": [1.0] * 6,
-            "miss_distance_m": [1e4] * 6,
-            "risk_true": [-3.0, -3.5, -8.0, -8.0, -5.0, -8.0],
-            "risk_log10_pred": [-3.0, -9.0, -8.0, -8.0, -5.0, -8.0],
-            "risk_tier_true": ["Critical", "Critical", "Safe", "Safe", "Elevated", None],
-            "risk_tier": ["Critical", "Safe", "Safe", "Safe", "Elevated", None],
-            "risk_log10_lower": [np.nan] * 6,
-            "risk_log10_upper": [np.nan] * 6,
-            "triage_action": [MANEUVER, AUTO, AUTO, AUTO, HUMAN, HUMAN_INSUFF],
-            "prediction_status": ["valid"] * 5 + ["invalid"],
-        }
-    )
-    tr = evaluate_predictions(df, cfg, n_bootstrap=5)["row_level"]["triage"]
-    assert tr["action_counts"] == {AUTO: 3, HUMAN: 1, HUMAN_INSUFF: 1, MANEUVER: 1}
-    assert tr["auto_clear_fraction"] == pytest.approx(0.5)
-    assert tr["true_critical_routed_to_auto_clear_n"] == 1
-    assert tr["true_critical_routed_to_auto_clear_fraction"] == pytest.approx(0.5)
-    assert tr["maneuver_review_fraction"] == pytest.approx(1 / 6)
-    assert tr["human_review_fraction"] == pytest.approx(2 / 6)
-
-
-def test_triage_on_synthetic_frame(frame, result):
-    tr = result["row_level"]["triage"]
-    n_auto = int((frame["triage_action"] == AUTO).sum())
-    assert tr["action_counts"][AUTO] == n_auto
-    assert tr["auto_clear_fraction"] == pytest.approx(n_auto / len(frame))
-    n_crit_auto = int(((frame["triage_action"] == AUTO) & (frame["risk_tier_true"] == "Critical")).sum())
-    assert tr["true_critical_routed_to_auto_clear_n"] == n_crit_auto
-    assert sum(tr["action_counts"].values()) == len(frame)
+def test_probability_metrics_empty_and_clipping():
+    m = probability_metrics(np.zeros((0, 3)), [])
+    assert m["n_used"] == 0 and m["brier"] is None and "log_loss" in m["undefined"]
+    P = np.array([[1.0, 0.0, 0.0]])
+    m2 = probability_metrics(P, [C])  # p_true = 0 -> clipped to 1e-12
+    assert m2["log_loss"] == pytest.approx(-math.log(1e-12))
+    assert m2["brier"] == pytest.approx(2.0)
+    with pytest.raises(ValueError):
+        probability_metrics(np.zeros((2, 2)), [S, S])
 
 
 # --------------------------------------------------------------------------- #
-# Full report structure, counts, classifier, bootstrap, JSON
+# Escalation and triage
 # --------------------------------------------------------------------------- #
-def test_report_structure_and_counts(frame, result, cfg):
-    assert result["scope"] == {"model": "test"}
-    assert set(result) == {"scope", "counts", "row_level", "latest_cdm", "horizon_slice", "horizon_latest_cdm"}
-    c = result["counts"]
-    assert c["n_rows"] == len(frame)
-    assert c["n_events"] == 200
-    assert c["n_critical_rows"] == int((frame["risk_tier_true"] == "Critical").sum())
-    assert c["n_critical_events"] == frame.loc[frame["risk_tier_true"] == "Critical", "event_id"].nunique()
-    assert c["n_elevated_rows"] == int((frame["risk_tier_true"] == "Elevated").sum())
-    assert c["n_floor_rows"] == int((frame["risk_true"] <= FLOOR).sum())
-    assert c["n_invalid_rows"] == 5
-
-    for view in ("row_level", "latest_cdm", "horizon_slice", "horizon_latest_cdm"):
-        v = result[view]
-        assert set(v) == {
-            "n_rows", "n_events", "n_critical_true", "tier", "pc_only", "regression",
-            "interval", "triage", "classifier", "bootstrap",
-        }
-        for group in ("tier", "pc_only", "regression", "interval", "triage", "classifier", "bootstrap"):
-            assert "undefined" in v[group]
-
-    assert result["latest_cdm"]["n_rows"] == 200
-    assert result["latest_cdm"]["n_events"] == 200
-    hmin = cfg["split"]["test_horizon_min_days"]
-    hz = frame[frame["time_to_tca_days"] >= hmin]
-    assert result["horizon_slice"]["n_rows"] == len(hz)
-    assert result["horizon_latest_cdm"]["n_rows"] == hz["event_id"].nunique()
-    assert result["horizon_slice"]["n_rows"] < result["row_level"]["n_rows"]
+def test_escalation_metrics_hand_checked():
+    df = pd.DataFrame({
+        #                a  b  c  d  e  f  g  h  i  j
+        "current_tier":  [S, S, E, S, E, S, C, C, C, C],
+        "final_tier":    [C, C, C, S, E, S, C, S, C, E],
+        "predicted_final_tier": [C, E, S, S, C, S, C, S, E, C],
+        "triage_action": [MANEUVER, WATCH, MONITOR, WATCH, MANEUVER, AUTO, MANEUVER, HUMAN, HUMAN, MANEUVER],
+    })
+    m = escalation_metrics(df)
+    nc, cc = m["non_critical_now"], m["critical_now"]
+    assert nc["n_total"] == 6 and nc["n_end_critical"] == 3
+    assert nc["n_flagged"] == 4 and nc["n_caught"] == 2
+    assert nc["recall_of_escalations"] == pytest.approx(2 / 3)
+    assert nc["precision_of_flags"] == pytest.approx(0.5)
+    assert nc["watch_list_size"] == 2 and nc["watch_list_hits"] == 1
+    assert cc["n_total"] == 4 and cc["n_deescalate"] == 2
+    assert cc["n_predicted_deescalation"] == 2 and cc["n_correct_deescalation"] == 1 and cc["n_false_deescalation"] == 1
+    assert m["undefined"] == []
+    # without triage column: watch-list numbers undefined, flags come from the forecast only
+    m2 = escalation_metrics(df.drop(columns=["triage_action"]))
+    assert m2["non_critical_now"]["watch_list_size"] is None
+    assert m2["non_critical_now"]["n_flagged"] == 2  # a, e
+    assert "non_critical_now.watch_list_size" in m2["undefined"]
+    # no Critical-now events: de-escalation ratios undefined
+    m3 = escalation_metrics(df[df["current_tier"] != C])
+    assert m3["critical_now"]["deescalation_recall"] is None
 
 
-def test_classifier_metrics(frame, result):
-    cl = result["row_level"]["classifier"]
-    assert cl is not None
-    from sklearn.metrics import average_precision_score, brier_score_loss
-
-    ok = frame["p_pc_critical"].notna() & frame["risk_true"].notna()
-    y = (frame.loc[ok, "risk_true"] >= CRIT).astype(int)
-    p = frame.loc[ok, "p_pc_critical"]
-    assert cl["n_pos"] == int(y.sum()) > 0
-    assert cl["pr_auc"] == pytest.approx(average_precision_score(y, p))
-    assert cl["brier"] == pytest.approx(brier_score_loss(y, p))
-
-
-def test_classifier_none_when_column_absent(frame, cfg):
-    res = evaluate_predictions(frame.drop(columns=["p_pc_critical"]), cfg, n_bootstrap=5)
-    assert res["row_level"]["classifier"] is None
-
-
-def test_bootstrap_brackets_point_estimates(result):
-    for view in ("row_level", "latest_cdm"):
-        v = result[view]
-        bs = v["bootstrap"]
-        point = {
-            "critical_recall": v["tier"]["critical_recall"],
-            "critical_precision": v["tier"]["critical_precision"],
-            "mae": v["regression"]["mae"],
-            "coverage": v["interval"]["coverage"],
-        }
-        for name, pt in point.items():
-            assert pt is not None
-            lo, hi = bs[name]["lower"], bs[name]["upper"]
-            assert lo is not None and hi is not None
-            assert lo <= pt <= hi, (view, name, lo, pt, hi)
-            assert lo <= hi
-        # continuous metrics must have a strictly positive width
-        assert bs["mae"]["lower"] < bs["mae"]["upper"]
-        assert bs["coverage"]["lower"] < bs["coverage"]["upper"]
-        assert bs["undefined"] == []
-
-
-def test_bootstrap_is_deterministic(frame, cfg):
-    a = evaluate_predictions(frame, cfg, n_bootstrap=30, seed=5)["row_level"]["bootstrap"]
-    b = evaluate_predictions(frame, cfg, n_bootstrap=30, seed=5)["row_level"]["bootstrap"]
-    assert a == b
-
-
-def test_result_is_json_serialisable(result):
-    text = json.dumps(result, allow_nan=False)
-    assert "NaN" not in text
-
-    def walk(o):
-        if isinstance(o, dict):
-            for v in o.values():
-                walk(v)
-        elif isinstance(o, list):
-            for v in o:
-                walk(v)
-        else:
-            assert o is None or isinstance(o, (bool, int, float, str)), type(o)
-            assert not isinstance(o, (np.generic,))
-            if isinstance(o, float):
-                assert not math.isnan(o)
-
-    walk(result)
-
-
-def test_to_jsonable():
-    out = to_jsonable(
-        {
-            "a": np.int64(3),
-            "b": np.float32(1.5),
-            "c": np.nan,
-            "d": [np.bool_(True), np.array([1.0, np.nan])],
-            "e": pd.NA,
-            "f": ("x", np.str_("y")),
-            7: None,
-        }
-    )
-    assert out == {"a": 3, "b": 1.5, "c": None, "d": [True, [1.0, None]], "e": None, "f": ["x", "y"], "7": None}
-    assert type(out["a"]) is int and type(out["b"]) is float and type(out["d"][0]) is bool
-    json.dumps(out, allow_nan=False)
+def test_triage_metrics_shares_sum_to_one(frame):
+    t = triage_metrics(frame)
+    assert t is not None
+    assert sum(t["action_counts"].values()) == len(frame)
+    assert sum(t["action_shares"].values()) == pytest.approx(1.0)
+    assert t["auto_clear_share"] == pytest.approx(t["action_shares"].get(AUTO, 0.0))
+    assert t["human_review_share"] == pytest.approx(t["action_shares"].get(HUMAN, 0.0) + t["action_shares"].get(HUMAN_INSUFF, 0.0))
+    assert t["n_final_critical_auto_cleared"] == int(((frame["final_tier"] == C) & (frame["triage_action"] == AUTO)).sum())
+    assert triage_metrics(frame.drop(columns=["triage_action"])) is None
 
 
 # --------------------------------------------------------------------------- #
-# compare_models / find_illustrative_cases
+# Bootstrap and breakdowns
 # --------------------------------------------------------------------------- #
-def test_compare_models(result, frame, cfg):
-    other = evaluate_predictions(frame.drop(columns=["p_pc_critical"]), cfg, n_bootstrap=5)
-    table = compare_models({"champion": result, "challenger": other, "broken": {}})
-    assert list(table.index) == ["champion", "challenger", "broken"]
-    assert len(table) == 3
-    expected_cols = [
-        "critical_recall", "critical_precision", "critical_f2", "pc_only_critical_recall",
-        "pc_only_critical_precision", "macro_f1", "mae", "mae_non_floor", "mae_high_risk",
-        "coverage", "median_width", "auto_clear_fraction", "true_critical_routed_to_auto_clear_n",
-    ]
-    assert list(table.columns) == expected_cols
-    assert table.loc["champion", "mae"] == pytest.approx(result["latest_cdm"]["regression"]["mae"])
-    assert table.loc["champion", "critical_recall"] == pytest.approx(result["latest_cdm"]["tier"]["critical_recall"])
-    assert all(v is None for v in table.loc["broken"].tolist())
-    # other view
-    t2 = compare_models({"champion": result}, view="row_level")
-    assert t2.loc["champion", "mae"] == pytest.approx(result["row_level"]["regression"]["mae"])
+def test_bootstrap_brackets_point_estimates_and_is_deterministic(frame):
+    b1 = bootstrap_cis(frame, n_bootstrap=300, seed=1)
+    b2 = bootstrap_cis(frame, n_bootstrap=300, seed=1)
+    assert b1 == b2
+    cm = classification_metrics(frame["final_tier"], frame["predicted_final_tier"])
+    tr = triage_metrics(frame)
+    for key, point in (("critical_recall", cm["critical_recall"]), ("critical_precision", cm["critical_precision"]),
+                       ("macro_f1", cm["macro_f1"]), ("auto_clear_share", tr["auto_clear_share"])):
+        assert b1[key]["lower"] <= point <= b1[key]["upper"], key
+        assert b1[key]["lower"] < b1[key]["upper"]
+    assert b1["undefined"] == []
+    b3 = bootstrap_cis(frame, n_bootstrap=300, seed=2)
+    assert b3 != b1
+    empty = bootstrap_cis(frame.iloc[0:0], n_bootstrap=10)
+    assert set(empty["undefined"]) == {"critical_recall", "critical_precision", "macro_f1", "auto_clear_share"}
+    nocrit = bootstrap_cis(frame[frame["final_tier"] != C].assign(predicted_final_tier=S), n_bootstrap=20)
+    assert nocrit["critical_recall"]["lower"] is None and "critical_recall" in nocrit["undefined"]
 
 
-def test_find_illustrative_cases(frame):
+def test_breakdown_merges_small_groups(frame):
+    bd = breakdown_by(frame, "object_type", min_rows=30)
+    assert sum(s["n"] for s in bd.values()) == len(frame)
+    for name, s in bd.items():
+        if name != "other":
+            assert s["n"] >= 30
+    assert "other" in bd and set(bd["other"]["merged_groups"]) >= {"TBA"}
+    assert "TBA" not in bd
+    assert breakdown_by(frame, "no_such_column") == {}
+    # missing values become their own group
     df = frame.copy()
-    # Guarantee at least one missed critical and one false alarm exist.
-    # pick a risk-driven Critical (risk_true >= -4) so a -12 prediction is the
-    # largest under-prediction in the frame and therefore sorts first
-    crit_idx = df.index[(df["risk_tier_true"] == "Critical") & (df["risk_true"] >= CRIT)][0]
-    df.loc[crit_idx, "risk_tier"] = "Safe"
-    df.loc[crit_idx, "risk_log10_pred"] = -12.0
-    safe_idx = df.index[df["risk_tier_true"] == "Safe"][0]
-    df.loc[safe_idx, "risk_tier"] = "Critical"
+    df["object_type"] = df["object_type"].astype(object)
+    df.loc[df.index[:40], "object_type"] = None
+    assert "missing" in breakdown_by(df, "object_type", min_rows=20)
 
+
+def test_lead_time_buckets_partition_rows(frame):
+    df = frame.copy()
+    df.loc[df.index[:3], "time_to_tca_days"] = [1.5, np.nan, 2.0]
+    lt = lead_time_breakdown(df)
+    assert sum(s["n"] for s in lt.values()) == len(df)
+    assert list(lt.keys())[:4] == ["[2,3)", "[3,4)", "[4,5)", "[5,inf)"]
+    assert lt["<2_or_missing"]["n"] == 2
+    assert lt["[2,3)"]["n"] == int(((df["time_to_tca_days"] >= 2) & (df["time_to_tca_days"] < 3)).sum())
+    assert lead_time_breakdown(df.drop(columns=["time_to_tca_days"])) == {}
+
+
+# --------------------------------------------------------------------------- #
+# Full report
+# --------------------------------------------------------------------------- #
+def test_evaluate_forecasts_is_json_safe_with_three_subsets(frame, cfg):
+    res = evaluate_forecasts(frame, cfg, n_bootstrap=50, seed=0, scope={"model": "test", "n": np.int64(3)})
+    json.dumps(res, allow_nan=False)
+    assert set(res["subsets"]) == {"all_usable", "trivial", "real_forecast"}
+    assert res["n_events"] == len(frame)
+    assert res["n_trivial"] + res["n_real_forecast"] == res["n_events"]
+    assert res["subsets"]["trivial"]["n_events"] == res["n_trivial"]
+    assert res["subsets"]["real_forecast"]["n_events"] == res["n_real_forecast"]
+    assert sum(res["class_counts"].values()) == res["n_events"]
+    assert res["scope"] == {"model": "test", "n": 3}
+    rf = res["subsets"]["real_forecast"]
+    for key in ("classification", "probability", "escalation", "triage", "bootstrap", "prediction_sets"):
+        assert rf[key] is not None, key
+    assert rf["classification"]["critical_recall"] is not None
+    assert rf["prediction_sets"]["coverage_empirical"] is not None
+    assert set(res["by_object_type"]) == {"real_forecast", "all_usable"}
+    assert set(res["by_lead_time"]) == {"real_forecast", "all_usable"}
+    assert sum(s["n"] for s in res["by_lead_time"]["real_forecast"].values()) == res["n_real_forecast"]
+    # the Invalid predictions show up as the extra confusion column, never as Safe
+    assert "Invalid" in res["subsets"]["all_usable"]["classification"]["confusion"]["pred_labels"]
+
+
+def test_evaluate_forecasts_undefined_when_subset_has_no_critical(frame, cfg):
+    df = frame.copy()
+    df.loc[df["is_trivial"], "final_tier"] = S
+    df.loc[df["is_trivial"], "predicted_final_tier"] = S
+    res = evaluate_forecasts(df, cfg, n_bootstrap=20)
+    json.dumps(res, allow_nan=False)
+    tri = res["subsets"]["trivial"]["classification"]
+    assert tri["critical_recall"] is None and "critical_recall" in tri["undefined"]
+    assert tri["confusion"]["row_normalised"][2] is None
+    assert res["subsets"]["trivial"]["probability"]["critical_pr_auc"] is None
+    assert "critical_recall" in res["subsets"]["trivial"]["bootstrap"]["undefined"]
+    # frame without is_trivial: everything is a real forecast, with a note
+    res2 = evaluate_forecasts(frame.drop(columns=["is_trivial"]), cfg, n_bootstrap=5)
+    assert res2["n_trivial"] == 0 and res2["subsets"]["trivial"]["n_events"] == 0 and res2["notes"]
+
+
+def test_compare_models_one_row_per_model(frame, cfg):
+    base = frame.copy()
+    base["predicted_final_tier"] = base["current_tier"]
+    results = {
+        "carry_forward_risk": evaluate_forecasts(base, cfg, n_bootstrap=5),
+        "lgbm_multiclass": evaluate_forecasts(frame, cfg, n_bootstrap=5),
+        "broken": {},
+    }
+    table = compare_models(results, subset="real_forecast")
+    assert table.index.tolist() == ["carry_forward_risk", "lgbm_multiclass", "broken"]
+    for col in ("critical_recall", "critical_precision", "critical_f2", "elevated_or_above_f2", "macro_f1", "brier",
+                "log_loss", "auto_clear_share", "n_final_critical_auto_cleared", "watch_share", "escalation_recall"):
+        assert col in table.columns
+    assert table.loc["broken"].isna().all() or all(v is None for v in table.loc["broken"].tolist())
+    assert table.loc["lgbm_multiclass", "critical_recall"] == results["lgbm_multiclass"]["subsets"]["real_forecast"]["classification"]["critical_recall"]
+
+
+def test_find_illustrative_cases_returns_missed_critical(frame):
+    df = frame.copy()
+    df["predicted_final_tier"] = df["predicted_final_tier"].astype(object)
+    df.loc[df.index[0], ["final_tier", "predicted_final_tier", "current_tier", "triage_action", "p_critical"]] = [C, S, S, AUTO, 0.01]
     cases = find_illustrative_cases(df, k=3)
-    assert set(cases) == {"missed_critical", "false_alarm_critical", "uncertain", "invalid"}
-    assert 1 <= len(cases["missed_critical"]) <= 3
-    assert all(r["risk_tier_true"] == "Critical" and r["risk_tier"] != "Critical" for r in cases["missed_critical"])
-    # worst (most under-predicted) first
-    assert cases["missed_critical"][0]["event_id"] == int(df.loc[crit_idx, "event_id"])
-    assert 1 <= len(cases["false_alarm_critical"]) <= 3
-    assert all(r["risk_tier"] == "Critical" and r["risk_tier_true"] != "Critical" for r in cases["false_alarm_critical"])
-    assert 1 <= len(cases["invalid"]) <= 3
-    assert all(r["prediction_status"] == "invalid" for r in cases["invalid"])
-    assert all(r["triage_action"] == HUMAN for r in cases["uncertain"])
-    if len(cases["uncertain"]) > 1:
-        widths = [r["risk_log10_upper"] - r["risk_log10_lower"] for r in cases["uncertain"]]
-        assert widths == sorted(widths, reverse=True)
-    # invalid rows have NaN pred -> must be None, and the whole thing serialises
-    assert all(r["risk_log10_pred"] is None for r in cases["invalid"])
-    json.dumps(cases, allow_nan=False)
+    assert set(cases) == {"missed_critical", "caught_by_watch", "false_alarm_critical", "false_deescalation", "uncertain"}
+    missed = cases["missed_critical"]
+    assert 1 <= len(missed) <= 3
+    assert missed[0]["final_tier"] == C and missed[0]["predicted_final_tier"] != C
+    assert missed[0]["triage_action"] != WATCH
+    assert missed[0]["event_id"] == 0  # lowest p_critical first
+    for rows in cases.values():
+        json.dumps(rows, allow_nan=False)
+        assert len(rows) <= 3
+    for r in cases["caught_by_watch"]:
+        assert r["triage_action"] == WATCH and r["final_tier"] == C
+    for r in cases["false_deescalation"]:
+        assert r["current_tier"] == C and r["final_tier"] == C and r["predicted_final_tier"] != C
+    assert cases["uncertain"] and len(cases["uncertain"][0]["prediction_set"]) >= 1
 
 
-def test_find_illustrative_cases_empty_categories(cfg):
-    df = pd.DataFrame(
-        {
-            "event_id": [1],
-            "time_to_tca_days": [1.0],
-            "miss_distance_m": [1e4],
-            "risk_true": [-8.0],
-            "risk_log10_pred": [-8.0],
-            "risk_tier_true": ["Safe"],
-            "risk_tier": ["Safe"],
-            "risk_log10_lower": [-9.0],
-            "risk_log10_upper": [-7.0],
-            "triage_action": [AUTO],
-            "prediction_status": ["valid"],
-        }
-    )
-    cases = find_illustrative_cases(df)
-    assert cases == {"missed_critical": [], "false_alarm_critical": [], "uncertain": [], "invalid": []}
+def test_to_jsonable_handles_numpy_and_nan():
+    out = to_jsonable({"a": np.float64("nan"), "b": np.int32(2), "c": [np.bool_(True), pd.NA], "d": np.array([1.0, np.inf])})
+    assert out == {"a": None, "b": 2, "c": [True, None], "d": [1.0, None]}
 
 
-
-def test_latest_cdm_scopes_reused_ids_by_dataset():
-    rows = pd.DataFrame({
-        "dataset_id": ["a", "b", "a", "b", "a", "b"],
-        "event_id": [1, 1, 1, 1, 1, 1],
-        "time_to_tca_days": [4.0, 3.0, 2.0, 1.0, 2.0, np.nan],
-        "tag": list("abcdef"),
-    }, index=[10, 20, 30, 40, 50, 60])
-    latest = latest_cdm_view(rows)
-    assert latest["tag"].tolist() == ["d", "e"]
-    assert latest.index.tolist() == [40, 50]
-    assert latest.columns.tolist() == rows.columns.tolist()
+# --------------------------------------------------------------------------- #
+# RESULTS.md renderer
+# --------------------------------------------------------------------------- #
+def _load_make_results():
+    spec = importlib.util.spec_from_file_location("make_results", ROOT / "scripts" / "make_results.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
-def test_mixed_dataset_evaluation_matches_globally_unique_ids(cfg):
-    a = make_frame(n_events=20, seed=17).assign(dataset_id="a")
-    b = make_frame(n_events=20, seed=23).assign(dataset_id="b")
-    mixed = pd.concat([a, b], ignore_index=True)
-    remapped = mixed.copy()
-    remapped.loc[remapped["dataset_id"] == "b", "event_id"] += 20
-    remapped = remapped.drop(columns="dataset_id")
-    actual = evaluate_predictions(mixed, cfg, n_bootstrap=40, seed=5)
-    expected = evaluate_predictions(remapped, cfg, n_bootstrap=40, seed=5)
-    assert actual == expected
-    assert actual["counts"]["n_events"] == 40
-    assert actual["latest_cdm"]["n_rows"] == 40
+def test_make_results_main_writes_report(tmp_path, frame, cfg):
+    base = frame.copy()
+    base["predicted_final_tier"] = base["current_tier"]
+    cf = evaluate_forecasts(base, cfg, n_bootstrap=5)
+    pm = evaluate_forecasts(frame, cfg, n_bootstrap=5)
+    ev = {
+        "generated_at": "2026-10-31T00:00:00",
+        "primary_model": "lgbm_multiclass",
+        "model_version": "test",
+        "split": {"seed": 42, "holdout_fraction": 0.2, "split_hash": "abc", "counts": {"dev": {}, "holdout": {}}},
+        "label_audit": {"n_events_total": 10, "n_usable": 9, "n_unusable": 1, "n_trivial": 2, "n_real_forecast": 7,
+                        "class_counts_usable": {"Safe": 6, "Elevated": 2, "Critical": 1}, "labels_match_recomputed": True},
+        "decision_thresholds": {"t_crit": 0.3, "t_elev": 0.4, "t_watch": 0.15, "t_clear": 0.9},
+        "models": {"carry_forward_risk": cf, "lgbm_multiclass": pm},
+        "ablations": {"use_past_risk_off": pm},
+        "mission_heldout_cv": pm,
+        "conformal_sets": None,
+        "illustrative_cases": find_illustrative_cases(frame),
+        "notes": ["synthetic"],
+        "total_train_seconds": 1.5,
+    }
+    (tmp_path / "evaluation.json").write_text(json.dumps(ev, allow_nan=False), encoding="utf-8")
+    (tmp_path / "audit.json").write_text(json.dumps({"files": {"train": {"n_rows": 5}}}), encoding="utf-8")
+    (tmp_path / "manifest.json").write_text(json.dumps({"tier_counts": {"Safe": 100, "Elevated": 40, "Critical": 20}}), encoding="utf-8")
+    mod = _load_make_results()
+    out = mod.main(tmp_path, tmp_path / "RESULTS.md")
+    text = Path(out).read_text(encoding="utf-8")
+    assert "## Headline: real-forecast holdout" in text
+    assert "| Model | Events | Critical recall | Critical precision | Critical F2 |" in text
+    assert "carry_forward_risk" in text and "**lgbm_multiclass**" in text
+    assert "enriched with high-risk events" in text
+    assert "Row-normalised" in text
+    assert "## Escalation watch" in text
+    # tolerant to an almost-empty evaluation.json
+    (tmp_path / "evaluation.json").write_text("{}", encoding="utf-8")
+    out2 = mod.main(tmp_path, tmp_path / "RESULTS2.md")
+    assert "undefined" in Path(out2).read_text(encoding="utf-8")

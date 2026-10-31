@@ -1,8 +1,8 @@
-# Collision-risk triage configuration. All distances in metres, speeds in m/s,
+# Collision-risk final-tier forecasting configuration. All distances in metres, speeds in m/s,
 # time_to_tca in days, risk in log10(Pc).
-schema_version: "1.0.0"
-feature_version: "features-v1"
-policy_version: "policy-v1"
+schema_version: "2.0.0"
+feature_version: "features-v2-final-tier"
+policy_version: "policy-v2-event"
 dataset_ids:
   train: "kelvins_train"
   test: "kelvins_test"
@@ -10,8 +10,13 @@ dataset_ids:
 paths:
   raw_train: data/raw/train_data.csv
   raw_test: data/raw/test_data.csv
+  event_labels: data/raw/challenge1_event_labels.xlsx   # NEW official labels workbook (train events)
   processed_dir: data/processed
   artifacts_dir: artifacts
+
+# Only CDMs at or beyond this many days before TCA may be used as inputs (features or history).
+horizon:
+  min_days: 2.0
 
 units:
   miss_distance: m
@@ -21,14 +26,15 @@ units:
   time_to_tca: days
   risk: log10(Pc)
 
-# Encoding of max_risk_estimate as verified by the data audit (range -9.8 .. -1.1,
-# never positive). It is ALREADY log10(Pc); do not apply another log.
+# Encoding of max_risk_estimate as verified by the data audit (range -9.8 .. -1.1, never
+# positive). It is ALREADY log10(Pc); do not apply another log.
 max_risk_estimate_encoding: log10
-# max_risk_estimate is NOT a strict upper bound on risk (target exceeds it in
-# ~0.35% of training rows), so predictions are not clipped against it.
 clip_to_max_risk_estimate: false
 
-# Only these source columns may enter feature engineering. `risk` is the target.
+# Source columns permitted in feature engineering. `risk` of CDMs at >= 2 days is allowed as a
+# *past* input only when features.use_past_risk is true (see README: the official baseline is
+# "carry the latest known risk forward", so past risk is known information at prediction time).
+# mission_id is NEVER a feature; it is read from the labels file for the mission-held-out check.
 allowed_input_columns:
   - event_id
   - time_to_tca
@@ -43,7 +49,7 @@ allowed_input_columns:
   - max_risk_estimate
   - F10
   - AP
-target_column: risk
+target_column: risk            # per-CDM label column; used as past input (flagged) and to derive final tiers
 required_geometry_columns:
   - time_to_tca
   - miss_distance
@@ -53,57 +59,59 @@ required_geometry_columns:
 optional_columns: [relative_speed, c_object_type, c_sigma_r, t_sigma_r, max_risk_estimate, F10, AP]
 
 thresholds:
-  critical_risk: -4.0          # risk_pred >= -4  -> Critical
-  elevated_risk: -6.0          # risk_pred >= -6  -> Elevated
+  critical_risk: -4.0          # risk >= -4  -> Critical
+  elevated_risk: -6.0          # risk >= -6  -> Elevated
   critical_distance_m: 1000.0  # miss < 1000 m    -> Critical
   elevated_distance_max_m: 5000.0  # 1000 <= miss <= 5000 -> Elevated (inclusive both ends)
   distance_band_inclusive: true
 
 features:
-  epsilon_m: 1.0           # floor for log10(miss_distance)
-  sigma_floor_m: 0.01      # floor for log10(sigma)
-  speed_floor_mps: 0.1     # floor for log10(relative_speed)
-  rtn_norm_tolerance: 0.01 # relative tolerance for |RTN| vs miss_distance check
-  sigma_suspicious_m: 1000000.0  # sigma values above this flagged as suspicious placeholders
-  object_type_categories: [DEBRIS, UNKNOWN, PAYLOAD, "ROCKET BODY", TBA]
+  use_past_risk: true      # allow `risk` of CDMs at >= 2 days as an input feature
   history_enabled: true
+  epsilon_m: 1.0
+  sigma_floor_m: 0.01
+  speed_floor_mps: 0.1
+  rtn_norm_tolerance: 0.01
+  sigma_suspicious_m: 1000000.0
+  object_type_categories: [DEBRIS, UNKNOWN, PAYLOAD, "ROCKET BODY", TBA]
 
 split:
   seed: 42
-  dev: 0.60
-  policy_cal: 0.15
-  conformal_cal: 0.10
-  eval: 0.15
-  test_horizon_min_days: 2.0  # test rows stop at time_to_tca >= 2 days
+  holdout: 0.20            # 80/20 event split stratified on final_tier x is_trivial
+  cv_folds: 5              # grouped OOF folds inside the 80% dev set
 
 model:
-  objective_candidates: [l1, l2]
-  n_search: 10
-  cv_folds: 5
-  learning_rate: [0.03, 0.05]
-  num_leaves: [15, 31]
-  min_child_samples: [50, 200]
-  feature_fraction: [0.8, 1.0]
-  lambda_l2: [0.0, 10.0]
-  max_rounds: 1000
-  early_stopping_rounds: 50
+  training_rows: auto      # auto = compare "snapshots" vs "latest" on OOF Critical F2 (real_forecast) and keep the better
+  class_weight_cap: 10.0   # capped inverse class-frequency weight
+  n_search: 12
+  learning_rate: [0.02, 0.06]
+  num_leaves: [7, 31]
+  min_child_samples: [30, 200]
+  feature_fraction: [0.7, 1.0]
+  lambda_l2: [0.0, 1.0, 10.0]
+  max_rounds: 3000
+  early_stopping_rounds: 100
   target_floor: -30.0
+  num_threads: 0
 
-conformal:
+calibration:
+  method: isotonic         # per-class one-vs-rest isotonic on dev OOF, renormalised to sum to 1
+
+conformal_sets:
+  enabled: true
   coverage: 0.90
-  min_calibration_events: 30
+  method: lac              # least-ambiguous-set: include class c if 1 - p_c <= q_hat
 
 triage:
-  review_upper_threshold: -4.0   # upper interval crossing this -> Human review
-  auto_clear_upper_threshold: -6.0
-  classifier_disagreement_prob: 0.5
-  # Quality flags that do NOT block the auto-clear candidate action. Every other
-  # flag (and prediction_status != valid) forces human review instead of auto-clear.
+  watch_max_share: 0.05            # escalation-watch list may hold at most this share of events (tuned on OOF)
+  deescalation_p_critical: 0.5     # current Critical + predicted lower with P(C) below this -> human review
+  auto_clear_zero_missed: true     # t_clear = largest auto-clear share with zero OOF final-Critical cleared
+  # Trend/volatility thresholds for reason codes (slopes are against time_to_tca; see docs/forecast_schema.md)
+  trends:
+    miss_shrink_slope: 0.02        # slope_log_miss >= this  -> MISS_SHRINKING   (log10 m per day)
+    risk_rise_slope: -0.10         # slope_risk_or_mre <= this -> RISK_RISING    (log10 Pc per day)
+    sigma_grow_slope: -0.05        # slope_log_sigma <= this -> SIGMA_GROWING   (log10 m per day)
+    mre_volatility: 0.50           # volatility_mre >= this  -> HIGH_VOLATILITY
+    risk_volatility: 1.50          # volatility_risk >= this -> HIGH_VOLATILITY
+  # Quality flags that do NOT block the auto-clear candidate action.
   auto_clear_allowed_flags: [MISSING_SPACE_WEATHER]
-
-# Interval method: "cqr" (conformalized quantile regression, adaptive width) or
-# "residual" (constant-width split conformal around the point prediction). Both use one
-# score per calibration event (max over its CDMs) and the finite-sample corrected quantile.
-interval:
-  method: cqr
-  quantile_alphas: [0.05, 0.95]

@@ -1,0 +1,126 @@
+{
+  "name": "lgbm_single_cdm",
+  "kind": "lgbm",
+  "model_version": "lgbm_single_cdm-20261031T043555Z",
+  "feature_version": "features-v1",
+  "policy_version": "policy-v1",
+  "feature_set": "single_cdm",
+  "feature_columns": [
+    "time_to_tca",
+    "miss_distance",
+    "relative_speed",
+    "relative_position_r",
+    "relative_position_t",
+    "relative_position_n",
+    "c_sigma_r",
+    "t_sigma_r",
+    "max_risk_estimate",
+    "F10",
+    "AP",
+    "c_object_type"
+  ],
+  "object_type_categories": [
+    "DEBRIS",
+    "UNKNOWN",
+    "PAYLOAD",
+    "ROCKET BODY",
+    "TBA"
+  ],
+  "split_hash": "9a944695ad01d4bb",
+  "trained_at": "20261031T043555Z",
+  "units": {
+    "miss_distance": "m",
+    "relative_position": "m",
+    "relative_speed": "m/s",
+    "sigma": "m",
+    "time_to_tca": "days",
+    "risk": "log10(Pc)"
+  },
+  "params": {
+    "objective": "l1",
+    "learning_rate": 0.04572128610553908,
+    "num_leaves": 23,
+    "min_child_samples": 69,
+    "feature_fraction": 0.8900771875791135,
+    "lambda_l2": 10.0
+  },
+  "num_iteration": 999,
+  "weighted": false,
+  "monotone": null,
+  "note": "allowed single-CDM telemetry + object type",
+  "feature_ranges": {
+    "time_to_tca": {
+      "min": -0.1442702199074074,
+      "max": 6.993043981481482
+    },
+    "miss_distance": {
+      "min": 9.0,
+      "max": 67373.0
+    },
+    "relative_speed": {
+      "min": 16.0,
+      "max": 16631.0
+    },
+    "relative_position_r": {
+      "min": -4675.7,
+      "max": 5284.1
+    },
+    "relative_position_t": {
+      "min": -62184.2,
+      "max": 62184.3
+    },
+    "relative_position_n": {
+      "min": -50995.5,
+      "max": 50996.8
+    },
+    "c_sigma_r": {
+      "min": 0.9406069591464944,
+      "max": 63781363.00000001
+    },
+    "t_sigma_r": {
+      "min": 0.6994956754691197,
+      "max": 63781363.00000001
+    },
+    "max_risk_estimate": {
+      "min": -9.751536282448967,
+      "max": -1.082441979174564
+    },
+    "F10": {
+      "min": 66.0,
+      "max": 246.0
+    },
+    "AP": {
+      "min": 0.0,
+      "max": 108.0
+    }
+  },
+  "train_seconds": 2.49,
+  "quantile_alphas": [
+    0.05,
+    0.95
+  ],
+  "cqr": {
+    "type": "cqr",
+    "coverage": 0.9,
+    "min_events": 30,
+    "status": "ok",
+    "q_hat": 0.7399665499913581,
+    "n_events": 1316,
+    "n_rows": 16531
+  },
+  "interval_method": "cqr",
+  "conformal": {
+    "type": "split_conformal",
+    "coverage": 0.9,
+    "min_events": 30,
+    "status": "ok",
+    "q_hat": 17.49921168461328,
+    "n_events": 1316,
+    "n_rows": 16531
+  },
+  "sigmoid": null,
+  "baseline": null,
+  "has_booster": true,
+  "has_classifier": false,
+  "schema_version": "1.0.0"
+}

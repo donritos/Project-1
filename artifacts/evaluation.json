@@ -1,0 +1,6694 @@
+{
+  "generated_at": "2026-10-31T04:37:20.269367+00:00",
+  "primary_model": "lgbm_history_weighted",
+  "model_version": "lgbm_history_weighted-20261031T043636Z",
+  "scope": {
+    "evaluation_partition": "eval (15% of training events, untouched until freeze)",
+    "split_hash": "9a944695ad01d4bb",
+    "split_counts": {
+      "dev": {
+        "n_events": 7893,
+        "n_rows": 97282,
+        "strata": {
+          "Safe": 4719,
+          "Elevated": 2089,
+          "Critical": 993,
+          "Critical_pc": 92
+        }
+      },
+      "policy_cal": {
+        "n_events": 1973,
+        "n_rows": 24339,
+        "strata": {
+          "Safe": 1180,
+          "Elevated": 522,
+          "Critical": 248,
+          "Critical_pc": 23
+        }
+      },
+      "conformal_cal": {
+        "n_events": 1316,
+        "n_rows": 16531,
+        "strata": {
+          "Safe": 787,
+          "Elevated": 348,
+          "Critical": 165,
+          "Critical_pc": 16
+        }
+      },
+      "eval": {
+        "n_events": 1972,
+        "n_rows": 24482,
+        "strata": {
+          "Safe": 1179,
+          "Elevated": 522,
+          "Critical": 248,
+          "Critical_pc": 23
+        }
+      }
+    },
+    "quick_mode": false
+  },
+  "selection": {
+    "cv_search": {
+      "results": [
+        {
+          "index": 0,
+          "params": {
+            "objective": "l1",
+            "learning_rate": 0.045479120971119266,
+            "num_leaves": 26,
+            "min_child_samples": 116,
+            "feature_fraction": 0.9717195839822765,
+            "lambda_l2": 0.0
+          },
+          "best_iterations": [
+            1000,
+            1000,
+            996,
+            922,
+            258
+          ],
+          "mean_best_iteration": 835,
+          "scores": {
+            "mae": 2.9772745278240578,
+            "mae_non_floor": 3.3143574270689893,
+            "mae_high_risk": 1.9644155951841054,
+            "critical_recall_pc_only": 0.46601941747572817,
+            "critical_precision_pc_only": 0.4,
+            "critical_f2_pc_only": 0.4511278195488721
+          },
+          "seconds": 25.3,
+          "selection_score": 3.0
+        },
+        {
+          "index": 1,
+          "params": {
+            "objective": "l2",
+            "learning_rate": 0.03188354695775299,
+            "num_leaves": 26,
+            "min_child_samples": 129,
+            "feature_fraction": 0.9522279403980706,
+            "lambda_l2": 10.0
+          },
+          "best_iterations": [
+            1000,
+            999,
+            993,
+            996,
+            1000
+          ],
+          "mean_best_iteration": 997,
+          "scores": {
+            "mae": 2.952943880036511,
+            "mae_non_floor": 3.3544892546554435,
+            "mae_high_risk": 2.3057055498505363,
+            "critical_recall_pc_only": 0.5266990291262136,
+            "critical_precision_pc_only": 0.18038237738985868,
+            "critical_f2_pc_only": 0.38056822167660476
+          },
+          "seconds": 12.1,
+          "selection_score": 8.0
+        },
+        {
+          "index": 2,
+          "params": {
+            "objective": "l1",
+            "learning_rate": 0.04572128610553908,
+            "num_leaves": 23,
+            "min_child_samples": 69,
+            "feature_fraction": 0.8900771875791135,
+            "lambda_l2": 10.0
+          },
+          "best_iterations": [
+            1000,
+            1000,
+            1000,
+            999,
+            1000
+          ],
+          "mean_best_iteration": 999,
+          "scores": {
+            "mae": 2.939102780121345,
+            "mae_non_floor": 3.2629265970970724,
+            "mae_high_risk": 1.9284378435377192,
+            "critical_recall_pc_only": 0.4830097087378641,
+            "critical_precision_pc_only": 0.3592057761732852,
+            "critical_f2_pc_only": 0.4518619436875568
+          },
+          "seconds": 15.7,
+          "selection_score": 1.5
+        },
+        {
+          "index": 3,
+          "params": {
+            "objective": "l2",
+            "learning_rate": 0.04853529977697204,
+            "num_leaves": 21,
+            "min_child_samples": 168,
+            "feature_fraction": 0.964552322654166,
+            "lambda_l2": 10.0
+          },
+          "best_iterations": [
+            999,
+            999,
+            1000,
+            994,
+            1000
+          ],
+          "mean_best_iteration": 998,
+          "scores": {
+            "mae": 2.9493969839249936,
+            "mae_non_floor": 3.351588066573505,
+            "mae_high_risk": 2.3472606503414606,
+            "critical_recall_pc_only": 0.5072815533980582,
+            "critical_precision_pc_only": 0.16443745082612116,
+            "critical_f2_pc_only": 0.35799931483384717
+          },
+          "seconds": 10.7,
+          "selection_score": 8.0
+        },
+        {
+          "index": 4,
+          "params": {
+            "objective": "l1",
+            "learning_rate": 0.038868283976546625,
+            "num_leaves": 22,
+            "min_child_samples": 84,
+            "feature_fraction": 0.910916957403167,
+            "lambda_l2": 10.0
+          },
+          "best_iterations": [
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+          ],
+          "mean_best_iteration": 1000,
+          "scores": {
+            "mae": 2.959767536778661,
+            "mae_non_floor": 3.2882291429475132,
+            "mae_high_risk": 1.9870623836203687,
+            "critical_recall_pc_only": 0.46601941747572817,
+            "critical_precision_pc_only": 0.3510054844606947,
+            "critical_f2_pc_only": 0.43735763097949887
+          },
+          "seconds": 15.2,
+          "selection_score": 3.0
+        },
+        {
+          "index": 5,
+          "params": {
+            "objective": "l2",
+            "learning_rate": 0.04655262343985164,
+            "num_leaves": 16,
+            "min_child_samples": 91,
+            "feature_fraction": 0.9516175480170748,
+            "lambda_l2": 10.0
+          },
+          "best_iterations": [
+            997,
+            992,
+            1000,
+            1000,
+            1000
+          ],
+          "mean_best_iteration": 997,
+          "scores": {
+            "mae": 3.005425262125021,
+            "mae_non_floor": 3.393817284875309,
+            "mae_high_risk": 2.423289273657706,
+            "critical_recall_pc_only": 0.5097087378640777,
+            "critical_precision_pc_only": 0.15217391304347827,
+            "critical_f2_pc_only": 0.3467635402906209
+          },
+          "seconds": 9.6,
+          "selection_score": 9.5
+        },
+        {
+          "index": 6,
+          "params": {
+            "objective": "l1",
+            "learning_rate": 0.03709051936259737,
+            "num_leaves": 16,
+            "min_child_samples": 196,
+            "feature_fraction": 0.9786242242644395,
+            "lambda_l2": 10.0
+          },
+          "best_iterations": [
+            359,
+            997,
+            1000,
+            494,
+            1000
+          ],
+          "mean_best_iteration": 770,
+          "scores": {
+            "mae": 3.1206655307854447,
+            "mae_non_floor": 3.4458398251358964,
+            "mae_high_risk": 2.400991880100659,
+            "critical_recall_pc_only": 0.46116504854368934,
+            "critical_precision_pc_only": 0.3231292517006803,
+            "critical_f2_pc_only": 0.4248658318425761
+          },
+          "seconds": 11.9,
+          "selection_score": 7.5
+        },
+        {
+          "index": 7,
+          "params": {
+            "objective": "l2",
+            "learning_rate": 0.033892774157039354,
+            "num_leaves": 28,
+            "min_child_samples": 104,
+            "feature_fraction": 0.8087607531574458,
+            "lambda_l2": 0.0
+          },
+          "best_iterations": [
+            999,
+            1000,
+            993,
+            1000,
+            995
+          ],
+          "mean_best_iteration": 997,
+          "scores": {
+            "mae": 2.9428806880668734,
+            "mae_non_floor": 3.3376948865240545,
+            "mae_high_risk": 2.262356975838167,
+            "critical_recall_pc_only": 0.5388349514563107,
+            "critical_precision_pc_only": 0.19006849315068494,
+            "critical_f2_pc_only": 0.39417613636363635
+          },
+          "seconds": 13.8,
+          "selection_score": 6.0
+        },
+        {
+          "index": 8,
+          "params": {
+            "objective": "l1",
+            "learning_rate": 0.03308578984135096,
+            "num_leaves": 27,
+            "min_child_samples": 153,
+            "feature_fraction": 0.9489524311815635,
+            "lambda_l2": 0.0
+          },
+          "best_iterations": [
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+          ],
+          "mean_best_iteration": 1000,
+          "scores": {
+            "mae": 2.9305341542799925,
+            "mae_non_floor": 3.255204112109011,
+            "mae_high_risk": 1.8984959658640597,
+            "critical_recall_pc_only": 0.4538834951456311,
+            "critical_precision_pc_only": 0.37701612903225806,
+            "critical_f2_pc_only": 0.4361007462686567
+          },
+          "seconds": 15.3,
+          "selection_score": 2.5
+        },
+        {
+          "index": 9,
+          "params": {
+            "objective": "l2",
+            "learning_rate": 0.03651650716276304,
+            "num_leaves": 31,
+            "min_child_samples": 186,
+            "feature_fraction": 0.8939111622551617,
+            "lambda_l2": 0.0
+          },
+          "best_iterations": [
+            997,
+            1000,
+            999,
+            983,
+            1000
+          ],
+          "mean_best_iteration": 995,
+          "scores": {
+            "mae": 2.9145019224109237,
+            "mae_non_floor": 3.3209767127647645,
+            "mae_high_risk": 2.2524758042930837,
+            "critical_recall_pc_only": 0.5242718446601942,
+            "critical_precision_pc_only": 0.18668971477960242,
+            "critical_f2_pc_only": 0.38502673796791437
+          },
+          "seconds": 13.1,
+          "selection_score": 6.0
+        }
+      ],
+      "best_index": 2,
+      "best": {
+        "index": 2,
+        "params": {
+          "objective": "l1",
+          "learning_rate": 0.04572128610553908,
+          "num_leaves": 23,
+          "min_child_samples": 69,
+          "feature_fraction": 0.8900771875791135,
+          "lambda_l2": 10.0
+        },
+        "best_iterations": [
+          1000,
+          1000,
+          1000,
+          999,
+          1000
+        ],
+        "mean_best_iteration": 999,
+        "scores": {
+          "mae": 2.939102780121345,
+          "mae_non_floor": 3.2629265970970724,
+          "mae_high_risk": 1.9284378435377192,
+          "critical_recall_pc_only": 0.4830097087378641,
+          "critical_precision_pc_only": 0.3592057761732852,
+          "critical_f2_pc_only": 0.4518619436875568
+        },
+        "seconds": 15.7,
+        "selection_score": 1.5
+      },
+      "n_folds": 5,
+      "selection_rule": "0.5*rank(MAE on non-floor rows) + 0.5*rank(Pc-only Critical F2), lower is better"
+    },
+    "candidate_selection_on_policy_cal": [
+      {
+        "name": "lgbm_single_cdm",
+        "mae": 3.543333403235728,
+        "mae_non_floor": 3.828565671056287,
+        "mae_high_risk": 2.2879073163601644,
+        "critical_recall_pc_only": 0.5283018867924528,
+        "critical_precision_pc_only": 0.448,
+        "critical_f2_pc_only": 0.5100182149362477,
+        "rank_mae_nf": 6.0,
+        "rank_f2": 2.0,
+        "selection_score": 4.0
+      },
+      {
+        "name": "lgbm_physics",
+        "mae": 3.2844800423793683,
+        "mae_non_floor": 3.5341074208588603,
+        "mae_high_risk": 2.005563341160386,
+        "critical_recall_pc_only": 0.41509433962264153,
+        "critical_precision_pc_only": 0.5176470588235295,
+        "critical_f2_pc_only": 0.4322200392927309,
+        "rank_mae_nf": 5.0,
+        "rank_f2": 4.0,
+        "selection_score": 4.5
+      },
+      {
+        "name": "lgbm_history",
+        "mae": 2.8328232110939537,
+        "mae_non_floor": 3.207839580711473,
+        "mae_high_risk": 1.863567815690235,
+        "critical_recall_pc_only": 0.46226415094339623,
+        "critical_precision_pc_only": 0.4224137931034483,
+        "critical_f2_pc_only": 0.4537037037037037,
+        "rank_mae_nf": 2.0,
+        "rank_f2": 3.0,
+        "selection_score": 2.5
+      },
+      {
+        "name": "lgbm_history_weighted",
+        "mae": 2.963885641008084,
+        "mae_non_floor": 2.972735048571741,
+        "mae_high_risk": 0.941560772756691,
+        "critical_recall_pc_only": 0.5943396226415094,
+        "critical_precision_pc_only": 0.7875,
+        "critical_f2_pc_only": 0.6250000000000001,
+        "rank_mae_nf": 1.0,
+        "rank_f2": 1.0,
+        "selection_score": 1.0
+      },
+      {
+        "name": "lgbm_history_l2",
+        "mae": 2.845299074615233,
+        "mae_non_floor": 3.224547388138556,
+        "mae_high_risk": 2.207003676128402,
+        "critical_recall_pc_only": 0.4528301886792453,
+        "critical_precision_pc_only": 0.1867704280155642,
+        "critical_f2_pc_only": 0.3524229074889868,
+        "rank_mae_nf": 3.0,
+        "rank_f2": 6.0,
+        "selection_score": 4.5
+      },
+      {
+        "name": "lgbm_history_l2_monotone",
+        "mae": 2.8590807137263337,
+        "mae_non_floor": 3.2460840982397103,
+        "mae_high_risk": 2.1683234331080943,
+        "critical_recall_pc_only": 0.4811320754716981,
+        "critical_precision_pc_only": 0.19767441860465115,
+        "critical_f2_pc_only": 0.373900293255132,
+        "rank_mae_nf": 4.0,
+        "rank_f2": 5.0,
+        "selection_score": 4.5
+      }
+    ],
+    "selection_rule": "0.5*rank(MAE non-floor) + 0.5*rank(Pc-only Critical F2) on policy_cal"
+  },
+  "classifier": {
+    "num_iteration": 31,
+    "threshold": 0.15,
+    "policy_cal_f2_at_threshold": 0.8469055374592832,
+    "n_pos_policy_cal": 106,
+    "reliability_policy_cal": {
+      "bin_lower": [
+        0.0,
+        0.1,
+        0.2,
+        0.30000000000000004,
+        0.4,
+        0.5,
+        0.6000000000000001,
+        0.7000000000000001,
+        0.8,
+        0.9
+      ],
+      "bin_upper": [
+        0.1,
+        0.2,
+        0.30000000000000004,
+        0.4,
+        0.5,
+        0.6000000000000001,
+        0.7000000000000001,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "mean_pred": [
+        0.00012766309561462746,
+        0.16827904685317707,
+        0.24564645546099034,
+        0.34336755930547846,
+        0.47541586537033703,
+        0.5645738224608421,
+        0.6313131262998666,
+        0.7950704102469653,
+        0.8252365689029365,
+        null
+      ],
+      "frac_pos": [
+        8.283288465520812e-05,
+        0.15384615384615385,
+        0.4,
+        0.125,
+        0.38461538461538464,
+        0.4918032786885246,
+        0.7126436781609196,
+        0.0,
+        0.0,
+        null
+      ],
+      "count": [
+        24145,
+        13,
+        10,
+        8,
+        13,
+        61,
+        87,
+        1,
+        1,
+        0
+      ]
+    }
+  },
+  "interval_method": "cqr",
+  "interval_method_comparison_primary": {
+    "residual": {
+      "row_level": {
+        "coverage": 0.9785965198921657,
+        "median_width": 24.12573276900345,
+        "auto_clear_fraction": 0.30704190834082185,
+        "human_review_fraction": 0.5615554284780655,
+        "true_critical_routed_to_auto_clear_n": 0
+      },
+      "latest_cdm": {
+        "coverage": 0.9832657200811359,
+        "median_width": 18.211934172654008,
+        "auto_clear_fraction": 0.4817444219066937,
+        "human_review_fraction": 0.35496957403651114,
+        "true_critical_routed_to_auto_clear_n": 0
+      }
+    },
+    "cqr": {
+      "row_level": {
+        "coverage": 0.9667510824279062,
+        "median_width": 20.166311487606784,
+        "auto_clear_fraction": 0.6280532636222531,
+        "human_review_fraction": 0.09464096070582469,
+        "true_critical_routed_to_auto_clear_n": 0
+      },
+      "latest_cdm": {
+        "coverage": 0.9726166328600405,
+        "median_width": 12.829286386413,
+        "auto_clear_fraction": 0.6810344827586207,
+        "human_review_fraction": 0.08265720081135902,
+        "true_critical_routed_to_auto_clear_n": 0
+      }
+    }
+  },
+  "models": {
+    "lgbm_single_cdm": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "lgbm_single_cdm",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.9797257006559332,
+          "critical_precision": 0.973918197984588,
+          "critical_f2": 0.9785586658725431,
+          "elevated_or_above_recall": 0.9479077711357814,
+          "elevated_or_above_precision": 0.9857904085257548,
+          "elevated_or_above_f2": 0.9552495697074009,
+          "macro_f1": 0.9711280134951802,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1643,
+                29,
+                5,
+                0
+              ],
+              [
+                41,
+                4947,
+                361,
+                0
+              ],
+              [
+                3,
+                93,
+                17360,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.4507042253521127,
+          "critical_precision": 0.48484848484848486,
+          "critical_f2": 0.4571428571428572,
+          "n_true_positive_rows": 64,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.535562983502861,
+          "rmse": 5.875151063115435,
+          "mae_non_floor": 3.812821171630155,
+          "rmse_non_floor": 5.694485637899419,
+          "mae_high_risk": 2.1315763930751905,
+          "rmse_high_risk": 3.866856369300671,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9698962503063475,
+          "median_width": 20.71877788338175,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 14655,
+            "Human review": 3549,
+            "Maneuver planning review": 1687,
+            "Monitor": 4591
+          },
+          "auto_clear_fraction": 0.598603055305939,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.0689077689731231,
+          "human_review_fraction": 0.14496364676088555,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9661499785299753,
+            "upper": 0.9935213075458927
+          },
+          "critical_precision": {
+            "lower": 0.9582274731210901,
+            "upper": 0.9846304417177576
+          },
+          "mae": {
+            "lower": 3.3920803906147263,
+            "upper": 3.6706619241447895
+          },
+          "coverage": {
+            "lower": 0.9650200388834073,
+            "upper": 0.9750879564101356
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 0.9849624060150376,
+          "critical_f2": 0.9969558599695587,
+          "elevated_or_above_recall": 0.9704016913319239,
+          "elevated_or_above_precision": 0.9870967741935484,
+          "elevated_or_above_f2": 0.9736953754773017,
+          "macro_f1": 0.985365763991006,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                327,
+                14,
+                0
+              ],
+              [
+                1,
+                5,
+                1493,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": 0.0,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 2.4374167342675412,
+          "rmse": 4.952795307304796,
+          "mae_non_floor": 4.215727450306381,
+          "rmse_non_floor": 6.317170817622687,
+          "mae_high_risk": 2.451628521189066,
+          "rmse_high_risk": 4.134760611113642,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9721095334685599,
+          "median_width": 14.852460348600797,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1313,
+            "Human review": 201,
+            "Maneuver planning review": 133,
+            "Monitor": 325
+          },
+          "auto_clear_fraction": 0.6658215010141988,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06744421906693712,
+          "human_review_fraction": 0.10192697768762678,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9582720588235295,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 2.255271498246036,
+            "upper": 2.616449560658321
+          },
+          "coverage": {
+            "lower": 0.9644903651115618,
+            "upper": 0.9787145030425964
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.9768211920529801,
+          "critical_precision": 0.9656301145662848,
+          "critical_f2": 0.9745622728774364,
+          "elevated_or_above_recall": 0.9359605911330049,
+          "elevated_or_above_precision": 0.9803921568627451,
+          "elevated_or_above_f2": 0.9445217737124676,
+          "macro_f1": 0.9633331342207526,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1180,
+                23,
+                5,
+                0
+              ],
+              [
+                40,
+                3507,
+                320,
+                0
+              ],
+              [
+                2,
+                93,
+                11693,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5163934426229508,
+          "critical_precision": 0.5206611570247934,
+          "critical_f2": 0.517241379310345,
+          "n_true_positive_rows": 63,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.810370060526418,
+          "rmse": 5.909554746439373,
+          "mae_non_floor": 3.321811577139692,
+          "rmse_non_floor": 4.938404983497144,
+          "mae_high_risk": 1.6350433846181451,
+          "rmse_high_risk": 2.8737288206030103,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9707050939927653,
+          "median_width": 22.175761005626335,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 9382,
+            "Human review": 3088,
+            "Maneuver planning review": 1222,
+            "Monitor": 3171
+          },
+          "auto_clear_fraction": 0.556366008420803,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.07246634643894918,
+          "human_review_fraction": 0.18312281325979957,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9560732191521009,
+            "upper": 0.9916348572575636
+          },
+          "critical_precision": {
+            "lower": 0.9454007249687453,
+            "upper": 0.9776110481627033
+          },
+          "mae": {
+            "lower": 3.6711258722051006,
+            "upper": 3.959196988589875
+          },
+          "coverage": {
+            "lower": 0.9645820188350515,
+            "upper": 0.9767081011484131
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 0.9914529914529915,
+          "critical_precision": 0.9666666666666667,
+          "critical_f2": 0.986394557823129,
+          "elevated_or_above_recall": 0.956140350877193,
+          "elevated_or_above_precision": 0.9841986455981941,
+          "elevated_or_above_f2": 0.9616232906925454,
+          "macro_f1": 0.9744746321282688,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                116,
+                1,
+                0,
+                0
+              ],
+              [
+                3,
+                316,
+                20,
+                0
+              ],
+              [
+                1,
+                6,
+                1315,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": 0.0,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.7869070108149097,
+          "rmse": 6.110098475520509,
+          "mae_non_floor": 4.892795502074387,
+          "rmse_non_floor": 6.904417930277801,
+          "mae_high_risk": 3.3578128152066373,
+          "rmse_high_risk": 5.2389825862090875,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9640044994375703,
+          "median_width": 20.31309463184497,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1147,
+            "Human review": 207,
+            "Maneuver planning review": 120,
+            "Monitor": 304
+          },
+          "auto_clear_fraction": 0.6451068616422947,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06749156355455568,
+          "human_review_fraction": 0.11642294713160854,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9698892901545202,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9285571428571429,
+            "upper": 0.992367857969003
+          },
+          "mae": {
+            "lower": 3.5958161855501705,
+            "upper": 4.0119585264946265
+          },
+          "coverage": {
+            "lower": 0.9550056242969629,
+            "upper": 0.9718785151856018
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 1.132,
+      "timing_breakdown_seconds": {
+        "features": 0.1031,
+        "point_model": 0.1862,
+        "policy": 0.089,
+        "total": 0.7281
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 17.49921168461328,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": {
+        "type": "cqr",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 0.7399665499913581,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "interval_method": "cqr"
+    },
+    "lgbm_physics": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "lgbm_physics",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.977340488968396,
+          "critical_precision": 0.9849759615384616,
+          "critical_f2": 0.9788580984233157,
+          "elevated_or_above_recall": 0.9483347566182749,
+          "elevated_or_above_precision": 0.9857967154904572,
+          "elevated_or_above_f2": 0.9555976249892435,
+          "macro_f1": 0.9729603177535258,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1639,
+                35,
+                3,
+                0
+              ],
+              [
+                24,
+                4965,
+                360,
+                0
+              ],
+              [
+                1,
+                95,
+                17360,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5070422535211268,
+          "critical_precision": 0.6206896551724138,
+          "critical_f2": 0.5263157894736843,
+          "n_true_positive_rows": 72,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.3028395493801455,
+          "rmse": 5.713184632168336,
+          "mae_non_floor": 3.612074838053946,
+          "rmse_non_floor": 5.5152869101067115,
+          "mae_high_risk": 1.8601715738273605,
+          "rmse_high_risk": 3.7312624842170328,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9689976309125071,
+          "median_width": 20.63714644980901,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 15194,
+            "Human review": 2723,
+            "Maneuver planning review": 1664,
+            "Monitor": 4901
+          },
+          "auto_clear_fraction": 0.6206192304550282,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06796830324319908,
+          "human_review_fraction": 0.11122457315578793,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9642147475484141,
+            "upper": 0.990756081156821
+          },
+          "critical_precision": {
+            "lower": 0.9737703894082592,
+            "upper": 0.992519528444434
+          },
+          "mae": {
+            "lower": 3.179176657199794,
+            "upper": 3.444314887943896
+          },
+          "coverage": {
+            "lower": 0.9633731784085616,
+            "upper": 0.9739530536121072
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 0.9924242424242424,
+          "critical_f2": 0.9984756097560975,
+          "elevated_or_above_recall": 0.9682875264270613,
+          "elevated_or_above_precision": 0.9828326180257511,
+          "elevated_or_above_f2": 0.9711620016963528,
+          "macro_f1": 0.9853331432610677,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                327,
+                15,
+                0
+              ],
+              [
+                1,
+                7,
+                1491,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": 0.0,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 2.3952791146353305,
+          "rmse": 4.948435735206341,
+          "mae_non_floor": 4.2355819384443105,
+          "rmse_non_floor": 6.3115092544162374,
+          "mae_high_risk": 2.575282743298802,
+          "rmse_high_risk": 4.476462211002625,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9670385395537525,
+          "median_width": 14.561096079089722,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1343,
+            "Human review": 168,
+            "Maneuver planning review": 132,
+            "Monitor": 329
+          },
+          "auto_clear_fraction": 0.6810344827586207,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06693711967545639,
+          "human_review_fraction": 0.08519269776876268,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9758064516129032,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 2.218822502025545,
+            "upper": 2.576314931929496
+          },
+          "coverage": {
+            "lower": 0.9594320486815415,
+            "upper": 0.9731364097363083
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.9735099337748344,
+          "critical_precision": 0.98,
+          "critical_f2": 0.9748010610079577,
+          "elevated_or_above_recall": 0.9369458128078818,
+          "elevated_or_above_precision": 0.9804123711340206,
+          "elevated_or_above_f2": 0.945328031809145,
+          "macro_f1": 0.9658160531277735,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1176,
+                29,
+                3,
+                0
+              ],
+              [
+                24,
+                3526,
+                317,
+                0
+              ],
+              [
+                0,
+                95,
+                11693,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5819672131147541,
+          "critical_precision": 0.6396396396396397,
+          "critical_f2": 0.5926544240400669,
+          "n_true_positive_rows": 71,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.540950841193936,
+          "rmse": 5.733137450168384,
+          "mae_non_floor": 3.129518251656052,
+          "rmse_non_floor": 4.755739706920081,
+          "mae_high_risk": 1.2999149575042421,
+          "rmse_high_risk": 2.4536542898390628,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9696376682678053,
+          "median_width": 22.126848581393098,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 9885,
+            "Human review": 2306,
+            "Maneuver planning review": 1200,
+            "Monitor": 3472
+          },
+          "auto_clear_fraction": 0.5861946272905177,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.07116171499733144,
+          "human_review_fraction": 0.13674909565320525,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9544555702122557,
+            "upper": 0.987981993088958
+          },
+          "critical_precision": {
+            "lower": 0.9670276793996121,
+            "upper": 0.9895661954032495
+          },
+          "mae": {
+            "lower": 3.387970429740918,
+            "upper": 3.6735599124782428
+          },
+          "coverage": {
+            "lower": 0.9621211737965313,
+            "upper": 0.9755634681641355
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 0.9914529914529915,
+          "critical_precision": 0.9830508474576272,
+          "critical_f2": 0.9897610921501707,
+          "elevated_or_above_recall": 0.9539473684210527,
+          "elevated_or_above_precision": 0.981941309255079,
+          "elevated_or_above_f2": 0.9594177326863698,
+          "macro_f1": 0.9760422353898814,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                116,
+                1,
+                0,
+                0
+              ],
+              [
+                2,
+                316,
+                21,
+                0
+              ],
+              [
+                0,
+                8,
+                1314,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.3333333333333333,
+          "critical_precision": 0.4,
+          "critical_f2": 0.3448275862068965,
+          "n_true_positive_rows": 2,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.505556270615328,
+          "rmse": 5.7851758357909,
+          "mae_non_floor": 4.348713949328067,
+          "rmse_non_floor": 6.260446170545801,
+          "mae_high_risk": 2.5521030036926566,
+          "rmse_high_risk": 4.171626075693394,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9628796400449944,
+          "median_width": 20.05502877571338,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1181,
+            "Human review": 162,
+            "Maneuver planning review": 118,
+            "Monitor": 317
+          },
+          "auto_clear_fraction": 0.6642294713160855,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06636670416197975,
+          "human_review_fraction": 0.09111361079865017,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9698892901545202,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.958306623931624,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 3.3358495641217796,
+            "upper": 3.702588082795084
+          },
+          "coverage": {
+            "lower": 0.953880764904387,
+            "upper": 0.9713160854893138
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 1.019,
+      "timing_breakdown_seconds": {
+        "features": 0.053,
+        "point_model": 0.1803,
+        "policy": 0.1187,
+        "total": 0.6808
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 17.35991726086568,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": {
+        "type": "cqr",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 0.45376323905835214,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "interval_method": "cqr"
+    },
+    "lgbm_history": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "lgbm_history",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.9785330948121646,
+          "critical_precision": 0.9675707547169812,
+          "critical_f2": 0.9763207996192289,
+          "elevated_or_above_recall": 0.9493310560774267,
+          "elevated_or_above_precision": 0.9824716453085874,
+          "elevated_or_above_f2": 0.9557790960937725,
+          "macro_f1": 0.9687535490108616,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1641,
+                31,
+                5,
+                0
+              ],
+              [
+                55,
+                4943,
+                351,
+                0
+              ],
+              [
+                0,
+                119,
+                17337,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.4225352112676056,
+          "critical_precision": 0.38961038961038963,
+          "critical_f2": 0.41551246537396125,
+          "n_true_positive_rows": 60,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 2.9187348821905816,
+          "rmse": 5.175601699657616,
+          "mae_non_floor": 3.290192274807689,
+          "rmse_non_floor": 5.082830138048146,
+          "mae_high_risk": 1.8378214283661882,
+          "rmse_high_risk": 3.6459842007832544,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9667919287639899,
+          "median_width": 20.16441349856705,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 15374,
+            "Human review": 2489,
+            "Maneuver planning review": 1696,
+            "Monitor": 4923
+          },
+          "auto_clear_fraction": 0.6279715709500858,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06927538599787599,
+          "human_review_fraction": 0.10166653051221305,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9644657102770355,
+            "upper": 0.9927212245433465
+          },
+          "critical_precision": {
+            "lower": 0.953616664852078,
+            "upper": 0.9836280586538534
+          },
+          "mae": {
+            "lower": 2.7976977302796624,
+            "upper": 3.0296038305996915
+          },
+          "coverage": {
+            "lower": 0.9607087960122311,
+            "upper": 0.9724899253765836
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 0.9849624060150376,
+          "critical_f2": 0.9969558599695587,
+          "elevated_or_above_recall": 0.9788583509513742,
+          "elevated_or_above_precision": 0.9893162393162394,
+          "elevated_or_above_f2": 0.9809322033898304,
+          "macro_f1": 0.9874394848545514,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                2,
+                330,
+                10,
+                0
+              ],
+              [
+                0,
+                5,
+                1494,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": 0.0,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 2.099327725096258,
+          "rmse": 4.464778205990678,
+          "mae_non_floor": 3.6100911190657023,
+          "rmse_non_floor": 5.553110511938596,
+          "mae_high_risk": 2.3843566152167006,
+          "rmse_high_risk": 4.5457547212706055,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9726166328600405,
+          "median_width": 12.827016732433425,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1341,
+            "Human review": 166,
+            "Maneuver planning review": 133,
+            "Monitor": 332
+          },
+          "auto_clear_fraction": 0.6800202839756593,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06744421906693712,
+          "human_review_fraction": 0.08417849898580122,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9607230392156864,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 1.928600566345094,
+            "upper": 2.236900338691381
+          },
+          "coverage": {
+            "lower": 0.9649974645030426,
+            "upper": 0.9787145030425964
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.9751655629139073,
+          "critical_precision": 0.9585028478437754,
+          "critical_f2": 0.9717868338557993,
+          "elevated_or_above_recall": 0.9371428571428572,
+          "elevated_or_above_precision": 0.975789905621666,
+          "elevated_or_above_f2": 0.9446254071661238,
+          "macro_f1": 0.9602527246078942,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1178,
+                25,
+                5,
+                0
+              ],
+              [
+                51,
+                3502,
+                314,
+                0
+              ],
+              [
+                0,
+                118,
+                11670,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.48360655737704916,
+          "critical_precision": 0.4041095890410959,
+          "critical_f2": 0.4652996845425867,
+          "n_true_positive_rows": 59,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.2014474975329303,
+          "rmse": 5.272139899350813,
+          "mae_non_floor": 2.9802004020810022,
+          "rmse_non_floor": 4.581008683214003,
+          "mae_high_risk": 1.4437162791837383,
+          "rmse_high_risk": 2.759279563836524,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9656051710846232,
+          "median_width": 21.88899147110714,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 10045,
+            "Human review": 2093,
+            "Maneuver planning review": 1229,
+            "Monitor": 3496
+          },
+          "auto_clear_fraction": 0.5956828559568286,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.07288145644310028,
+          "human_review_fraction": 0.12411789124117892,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9496523288205206,
+            "upper": 0.9902582235033311
+          },
+          "critical_precision": {
+            "lower": 0.9420966282901223,
+            "upper": 0.9736460634046328
+          },
+          "mae": {
+            "lower": 3.031415490462693,
+            "upper": 3.3418466389741655
+          },
+          "coverage": {
+            "lower": 0.9581248189713386,
+            "upper": 0.9715557288895919
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 0.9914529914529915,
+          "critical_precision": 0.9830508474576272,
+          "critical_f2": 0.9897610921501707,
+          "elevated_or_above_recall": 0.9649122807017544,
+          "elevated_or_above_precision": 0.990990990990991,
+          "elevated_or_above_f2": 0.9700176366843034,
+          "macro_f1": 0.9817058186352834,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                116,
+                1,
+                0,
+                0
+              ],
+              [
+                2,
+                321,
+                16,
+                0
+              ],
+              [
+                0,
+                4,
+                1318,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.16666666666666666,
+          "critical_precision": 0.14285714285714285,
+          "critical_f2": 0.16129032258064516,
+          "n_true_positive_rows": 1,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.068893105711375,
+          "rmse": 5.363938515660037,
+          "mae_non_floor": 3.9948753197107405,
+          "rmse_non_floor": 5.951950141528508,
+          "mae_high_risk": 2.673188031966434,
+          "rmse_high_risk": 4.928674510950968,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9611923509561305,
+          "median_width": 19.245281823417006,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1183,
+            "Human review": 160,
+            "Maneuver planning review": 118,
+            "Monitor": 317
+          },
+          "auto_clear_fraction": 0.6653543307086615,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06636670416197975,
+          "human_review_fraction": 0.08998875140607424,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9698892901545202,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9564512882447666,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 2.8862574510520704,
+            "upper": 3.2942120751841046
+          },
+          "coverage": {
+            "lower": 0.9516029246344208,
+            "upper": 0.9691085489313837
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 1.136,
+      "timing_breakdown_seconds": {
+        "features": 0.1422,
+        "point_model": 0.185,
+        "policy": 0.1385,
+        "total": 0.8069
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 16.30739225152613,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": {
+        "type": "cqr",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 0.41727801522897856,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "interval_method": "cqr"
+    },
+    "lgbm_history_weighted": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "lgbm_history_weighted",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.9767441860465116,
+          "critical_precision": 0.9891304347826086,
+          "critical_f2": 0.979196556671449,
+          "elevated_or_above_recall": 0.9689723882721321,
+          "elevated_or_above_precision": 0.9743809932732217,
+          "elevated_or_above_f2": 0.9700493003904136,
+          "macro_f1": 0.9763433890423591,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1638,
+                39,
+                0,
+                0
+              ],
+              [
+                18,
+                5113,
+                218,
+                0
+              ],
+              [
+                0,
+                179,
+                17277,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.4647887323943662,
+          "critical_precision": 0.6285714285714286,
+          "critical_f2": 0.49034175334323926,
+          "n_true_positive_rows": 66,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.034513746406583,
+          "rmse": 5.383047618168415,
+          "mae_non_floor": 3.02945314401049,
+          "rmse_non_floor": 4.72566565896774,
+          "mae_high_risk": 0.8322935313911557,
+          "rmse_high_risk": 1.7567935693326329,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9667510824279062,
+          "median_width": 20.166311487606784,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 15376,
+            "Human review": 2317,
+            "Maneuver planning review": 1656,
+            "Monitor": 5133
+          },
+          "auto_clear_fraction": 0.6280532636222531,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06764153255452986,
+          "human_review_fraction": 0.09464096070582469,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": 0.662656200983357,
+          "brier": 0.0026138330923364513,
+          "n_pos": 142,
+          "undefined": []
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9621639040899503,
+            "upper": 0.9923104772815756
+          },
+          "critical_precision": {
+            "lower": 0.978595393339509,
+            "upper": 0.996876142784367
+          },
+          "mae": {
+            "lower": 2.907222357682182,
+            "upper": 3.1622252468493643
+          },
+          "coverage": {
+            "lower": 0.9606963407604847,
+            "upper": 0.9724429202837827
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 1.0,
+          "critical_f2": 1.0,
+          "elevated_or_above_recall": 0.9830866807610994,
+          "elevated_or_above_precision": 0.9893617021276596,
+          "elevated_or_above_f2": 0.9843353090601185,
+          "macro_f1": 0.9921928454913789,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                334,
+                8,
+                0
+              ],
+              [
+                0,
+                5,
+                1494,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": 0.0,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 2.2931658391549408,
+          "rmse": 4.7347034990377255,
+          "mae_non_floor": 3.2964004502949797,
+          "rmse_non_floor": 5.108068816141745,
+          "mae_high_risk": 1.1554367582600409,
+          "rmse_high_risk": 2.0264169709531625,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9726166328600405,
+          "median_width": 12.829286386413,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1343,
+            "Human review": 163,
+            "Maneuver planning review": 131,
+            "Monitor": 335
+          },
+          "auto_clear_fraction": 0.6810344827586207,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06643002028397565,
+          "human_review_fraction": 0.08265720081135902,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": 0.001268189608258282,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 2.1273147506366925,
+            "upper": 2.450390297004765
+          },
+          "coverage": {
+            "lower": 0.9649974645030426,
+            "upper": 0.9787145030425964
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.972682119205298,
+          "critical_precision": 0.9873949579831933,
+          "critical_f2": 0.9755895051477914,
+          "elevated_or_above_recall": 0.9627586206896551,
+          "elevated_or_above_precision": 0.9654218533886584,
+          "elevated_or_above_f2": 0.9632900910847364,
+          "macro_f1": 0.9704364400466652,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1175,
+                33,
+                0,
+                0
+              ],
+              [
+                15,
+                3663,
+                189,
+                0
+              ],
+              [
+                0,
+                175,
+                11613,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5327868852459017,
+          "critical_precision": 0.6701030927835051,
+          "critical_f2": 0.5555555555555556,
+          "n_true_positive_rows": 65,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.2646332345845326,
+          "rmse": 5.484784233204926,
+          "mae_non_floor": 2.7816442545641547,
+          "rmse_non_floor": 4.3626986659849685,
+          "mae_high_risk": 0.6729133362603571,
+          "rmse_high_risk": 1.349816924379864,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9655458696554587,
+          "median_width": 21.891222308283293,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 10049,
+            "Human review": 1925,
+            "Maneuver planning review": 1190,
+            "Monitor": 3699
+          },
+          "auto_clear_fraction": 0.5959200616734863,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.070568700705687,
+          "human_review_fraction": 0.1141552511415525,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": 0.6855381826271021,
+          "brier": 0.003040367009857364,
+          "n_pos": 122,
+          "undefined": []
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9481139374151591,
+            "upper": 0.9885751879699248
+          },
+          "critical_precision": {
+            "lower": 0.9768608839390028,
+            "upper": 0.9955266699618278
+          },
+          "mae": {
+            "lower": 3.0949136480983004,
+            "upper": 3.4151559734214776
+          },
+          "coverage": {
+            "lower": 0.9577419969388431,
+            "upper": 0.971795277776907
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 0.9914529914529915,
+          "critical_precision": 0.9914529914529915,
+          "critical_f2": 0.9914529914529915,
+          "elevated_or_above_recall": 0.9714912280701754,
+          "elevated_or_above_precision": 0.9888392857142857,
+          "elevated_or_above_f2": 0.974911971830986,
+          "macro_f1": 0.9849383049558642,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                116,
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                325,
+                13,
+                0
+              ],
+              [
+                0,
+                5,
+                1317,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.3333333333333333,
+          "critical_precision": 0.4,
+          "critical_f2": 0.3448275862068965,
+          "n_true_positive_rows": 2,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.075389657638544,
+          "rmse": 5.370459757914292,
+          "mae_non_floor": 3.503045250240526,
+          "rmse_non_floor": 5.253364872323366,
+          "mae_high_risk": 1.3720292534265552,
+          "rmse_high_risk": 2.546610043190393,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9611923509561305,
+          "median_width": 19.24755147739658,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1185,
+            "Human review": 155,
+            "Maneuver planning review": 117,
+            "Monitor": 321
+          },
+          "auto_clear_fraction": 0.6664791901012374,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06580427446569179,
+          "human_review_fraction": 0.08717660292463442,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": 0.6365740740740741,
+          "brier": 0.001999990944941454,
+          "n_pos": 6,
+          "undefined": []
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9698892901545202,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9731829939919893,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 2.8896061140146494,
+            "upper": 3.2641526240765275
+          },
+          "coverage": {
+            "lower": 0.9516029246344208,
+            "upper": 0.9691085489313837
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 1.139,
+      "timing_breakdown_seconds": {
+        "features": 0.0969,
+        "point_model": 0.1799,
+        "policy": 0.1277,
+        "total": 0.7883
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 17.257313959395173,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": {
+        "type": "cqr",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 0.41954766920855313,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "interval_method": "cqr"
+    },
+    "lgbm_history_l2": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "lgbm_history_l2",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.9797257006559332,
+          "critical_precision": 0.9027472527472528,
+          "critical_f2": 0.9632973733583491,
+          "elevated_or_above_recall": 0.9503273555365784,
+          "elevated_or_above_precision": 0.9754565376186998,
+          "elevated_or_above_f2": 0.9552490772268162,
+          "macro_f1": 0.9526131603970023,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1643,
+                30,
+                4,
+                0
+              ],
+              [
+                165,
+                4839,
+                345,
+                0
+              ],
+              [
+                12,
+                156,
+                17288,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.4225352112676056,
+          "critical_precision": 0.20270270270270271,
+          "critical_f2": 0.3472222222222222,
+          "n_true_positive_rows": 60,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 2.939864229389696,
+          "rmse": 4.5727625416997935,
+          "mae_non_floor": 3.33803126811768,
+          "rmse_non_floor": 4.585198253866241,
+          "mae_high_risk": 2.1514083783919293,
+          "rmse_high_risk": 3.1221217751975874,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9670370067804918,
+          "median_width": 20.166683152546625,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 15342,
+            "Human review": 2492,
+            "Maneuver planning review": 1820,
+            "Monitor": 4828
+          },
+          "auto_clear_fraction": 0.6266644881954089,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.074340331672249,
+          "human_review_fraction": 0.10178906952046402,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9662353806178221,
+            "upper": 0.9944869568474479
+          },
+          "critical_precision": {
+            "lower": 0.8731383193507735,
+            "upper": 0.9292305026763201
+          },
+          "mae": {
+            "lower": 2.8416437470207643,
+            "upper": 3.0580359602811216
+          },
+          "coverage": {
+            "lower": 0.9611139426974489,
+            "upper": 0.9726908193419262
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 0.9562043795620438,
+          "critical_f2": 0.9909228441754916,
+          "elevated_or_above_recall": 0.9746300211416491,
+          "elevated_or_above_precision": 0.9829424307036247,
+          "elevated_or_above_f2": 0.9762812367640833,
+          "macro_f1": 0.9794362551868,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                4,
+                326,
+                12,
+                0
+              ],
+              [
+                2,
+                6,
+                1491,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": 0.0,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 2.1830500774324073,
+          "rmse": 3.963292414144814,
+          "mae_non_floor": 3.848737283588843,
+          "rmse_non_floor": 5.1745578497156925,
+          "mae_high_risk": 2.716542797706815,
+          "rmse_high_risk": 4.138816906654623,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9726166328600405,
+          "median_width": 12.829286386413,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1342,
+            "Human review": 164,
+            "Maneuver planning review": 137,
+            "Monitor": 329
+          },
+          "auto_clear_fraction": 0.6805273833671399,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06947261663286004,
+          "human_review_fraction": 0.08316430020283976,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9190874670763828,
+            "upper": 0.9849624060150376
+          },
+          "mae": {
+            "lower": 2.0533529893707123,
+            "upper": 2.324342936349126
+          },
+          "coverage": {
+            "lower": 0.9649974645030426,
+            "upper": 0.9787145030425964
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.9768211920529801,
+          "critical_precision": 0.8734270910436713,
+          "critical_f2": 0.9542293385088144,
+          "elevated_or_above_recall": 0.9391133004926109,
+          "elevated_or_above_precision": 0.9663422546634225,
+          "elevated_or_above_f2": 0.944435637285986,
+          "macro_f1": 0.9385809811161141,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1180,
+                24,
+                4,
+                0
+              ],
+              [
+                160,
+                3402,
+                305,
+                0
+              ],
+              [
+                11,
+                155,
+                11622,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.47540983606557374,
+          "critical_precision": 0.20279720279720279,
+          "critical_f2": 0.3746770025839793,
+          "n_true_positive_rows": 58,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.1933407042663515,
+          "rmse": 4.701361347733408,
+          "mae_non_floor": 3.104576758388514,
+          "rmse_non_floor": 4.275166148011869,
+          "mae_high_risk": 1.8874693988417441,
+          "rmse_high_risk": 2.6571323548297285,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9659016782304454,
+          "median_width": 21.891261125086714,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 10015,
+            "Human review": 2091,
+            "Maneuver planning review": 1351,
+            "Monitor": 3406
+          },
+          "auto_clear_fraction": 0.5939038130818953,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08011623080116231,
+          "human_review_fraction": 0.12399928838285003,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9552287047688769,
+            "upper": 0.9908742154811716
+          },
+          "critical_precision": {
+            "lower": 0.8418286037393514,
+            "upper": 0.9103986068111455
+          },
+          "mae": {
+            "lower": 3.0638889480671385,
+            "upper": 3.310258970181028
+          },
+          "coverage": {
+            "lower": 0.9582229075688049,
+            "upper": 0.9720982739196888
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 0.9914529914529915,
+          "critical_precision": 0.9206349206349206,
+          "critical_f2": 0.9764309764309764,
+          "elevated_or_above_recall": 0.9627192982456141,
+          "elevated_or_above_precision": 0.9799107142857143,
+          "elevated_or_above_f2": 0.9661091549295775,
+          "macro_f1": 0.9650014105615475,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                116,
+                1,
+                0,
+                0
+              ],
+              [
+                8,
+                314,
+                17,
+                0
+              ],
+              [
+                2,
+                7,
+                1313,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.3333333333333333,
+          "critical_precision": 0.10526315789473684,
+          "critical_f2": 0.23255813953488375,
+          "n_true_positive_rows": 2,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.1339247459077777,
+          "rmse": 4.762735606543322,
+          "mae_non_floor": 3.822571197869729,
+          "rmse_non_floor": 5.121703803446113,
+          "mae_high_risk": 2.3297284574269863,
+          "rmse_high_risk": 3.1951803283393936,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9617547806524185,
+          "median_width": 19.24755147739658,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1183,
+            "Human review": 156,
+            "Maneuver planning review": 126,
+            "Monitor": 313
+          },
+          "auto_clear_fraction": 0.6653543307086615,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.07086614173228346,
+          "human_review_fraction": 0.08773903262092239,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9698892901545202,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.8739495798319328,
+            "upper": 0.9652322556670383
+          },
+          "mae": {
+            "lower": 2.9598900815721096,
+            "upper": 3.3046811560436797
+          },
+          "coverage": {
+            "lower": 0.9516169853768279,
+            "upper": 0.9702193475815524
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 1.157,
+      "timing_breakdown_seconds": {
+        "features": 0.1476,
+        "point_model": 0.1976,
+        "policy": 0.1281,
+        "total": 0.789
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 12.985137797591467,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": {
+        "type": "cqr",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 0.41954766920855313,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "interval_method": "cqr"
+    },
+    "lgbm_history_l2_monotone": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "lgbm_history_l2_monotone",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.9809183064997018,
+          "critical_precision": 0.9053384700055036,
+          "critical_f2": 0.9648093841642228,
+          "elevated_or_above_recall": 0.9490463990890976,
+          "elevated_or_above_precision": 0.9749963444948092,
+          "elevated_or_above_f2": 0.9541252897576052,
+          "macro_f1": 0.9531762509508396,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1645,
+                26,
+                6,
+                0
+              ],
+              [
+                159,
+                4838,
+                352,
+                0
+              ],
+              [
+                13,
+                158,
+                17285,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.49295774647887325,
+          "critical_precision": 0.23411371237458195,
+          "critical_f2": 0.4036908881199539,
+          "n_true_positive_rows": 70,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 2.9487611836874743,
+          "rmse": 4.587071315673569,
+          "mae_non_floor": 3.3411738686175787,
+          "rmse_non_floor": 4.593066691450152,
+          "mae_high_risk": 2.082115547828095,
+          "rmse_high_risk": 3.042208814923762,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9669144677722409,
+          "median_width": 20.16735505051861,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 15340,
+            "Human review": 2494,
+            "Maneuver planning review": 1817,
+            "Monitor": 4831
+          },
+          "auto_clear_fraction": 0.6265827955232416,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.07421779266399804,
+          "human_review_fraction": 0.10187076219263132,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.969207711332516,
+            "upper": 0.9941659208573598
+          },
+          "critical_precision": {
+            "lower": 0.8768865429115436,
+            "upper": 0.9307134247833323
+          },
+          "mae": {
+            "lower": 2.8370867241404176,
+            "upper": 3.0658013528204937
+          },
+          "coverage": {
+            "lower": 0.9609087252919694,
+            "upper": 0.9725689343076726
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 0.9492753623188406,
+          "critical_f2": 0.9894259818731118,
+          "elevated_or_above_recall": 0.9746300211416491,
+          "elevated_or_above_precision": 0.9766949152542372,
+          "elevated_or_above_f2": 0.9750423011844331,
+          "macro_f1": 0.9769351711710156,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                4,
+                326,
+                12,
+                0
+              ],
+              [
+                3,
+                8,
+                1488,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": 0.0,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 2.210520418337114,
+          "rmse": 4.0057583482237735,
+          "mae_non_floor": 3.9060136372906276,
+          "rmse_non_floor": 5.238286108388333,
+          "mae_high_risk": 2.8229657816176736,
+          "rmse_high_risk": 4.150684443272685,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9726166328600405,
+          "median_width": 12.829286386413,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1342,
+            "Human review": 165,
+            "Maneuver planning review": 138,
+            "Monitor": 327
+          },
+          "auto_clear_fraction": 0.6805273833671399,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06997971602434078,
+          "human_review_fraction": 0.08367139959432049,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.9108961991124831,
+            "upper": 0.9784211202466598
+          },
+          "mae": {
+            "lower": 2.0665839179343797,
+            "upper": 2.3556471553452374
+          },
+          "coverage": {
+            "lower": 0.9649974645030426,
+            "upper": 0.9787145030425964
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.9784768211920529,
+          "critical_precision": 0.8755555555555555,
+          "critical_f2": 0.9560012940795857,
+          "elevated_or_above_recall": 0.9375369458128079,
+          "elevated_or_above_precision": 0.9655032467532467,
+          "elevated_or_above_f2": 0.9429998414460125,
+          "macro_f1": 0.9389985243171025,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1182,
+                20,
+                6,
+                0
+              ],
+              [
+                156,
+                3400,
+                311,
+                0
+              ],
+              [
+                12,
+                158,
+                11618,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5573770491803278,
+          "critical_precision": 0.23529411764705882,
+          "critical_f2": 0.4375804375804376,
+          "n_true_positive_rows": 68,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.196990819472814,
+          "rmse": 4.712952577077782,
+          "mae_non_floor": 3.0983064969990926,
+          "rmse_non_floor": 4.275052352875842,
+          "mae_high_risk": 1.81497325470382,
+          "rmse_high_risk": 2.579486399176165,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9658423768012809,
+          "median_width": 21.891261125086714,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 10012,
+            "Human review": 2090,
+            "Maneuver planning review": 1350,
+            "Monitor": 3411
+          },
+          "auto_clear_fraction": 0.5937259087944019,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08005692937199786,
+          "human_review_fraction": 0.12393998695368558,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9569365036385598,
+            "upper": 0.9924842616897273
+          },
+          "critical_precision": {
+            "lower": 0.8442901743695237,
+            "upper": 0.9094483530566658
+          },
+          "mae": {
+            "lower": 3.0681738485057037,
+            "upper": 3.3132116708085615
+          },
+          "coverage": {
+            "lower": 0.9582018260977773,
+            "upper": 0.971916537310264
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 0.9212598425196851,
+          "critical_f2": 0.9831932773109242,
+          "elevated_or_above_recall": 0.9671052631578947,
+          "elevated_or_above_precision": 0.9756637168141593,
+          "elevated_or_above_f2": 0.968804920913884,
+          "macro_f1": 0.968005646477744,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                117,
+                0,
+                0,
+                0
+              ],
+              [
+                7,
+                317,
+                15,
+                0
+              ],
+              [
+                3,
+                8,
+                1311,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5,
+          "critical_precision": 0.15789473684210525,
+          "critical_f2": 0.3488372093023256,
+          "n_true_positive_rows": 3,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.134445890540633,
+          "rmse": 4.763394907214745,
+          "mae_non_floor": 3.8112688597268383,
+          "rmse_non_floor": 5.113765809299304,
+          "mae_high_risk": 2.300140755387993,
+          "rmse_high_risk": 3.170640299770169,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9611923509561305,
+          "median_width": 19.24755147739658,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1184,
+            "Human review": 152,
+            "Maneuver planning review": 127,
+            "Monitor": 315
+          },
+          "auto_clear_fraction": 0.6659167604049494,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.07142857142857142,
+          "human_review_fraction": 0.08548931383577053,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 0.868217879256966,
+            "upper": 0.9652248875562218
+          },
+          "mae": {
+            "lower": 2.9647778675357275,
+            "upper": 3.308190055264048
+          },
+          "coverage": {
+            "lower": 0.9516029246344208,
+            "upper": 0.9691085489313837
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 1.146,
+      "timing_breakdown_seconds": {
+        "features": 0.1012,
+        "point_model": 0.1949,
+        "policy": 0.1371,
+        "total": 0.7428
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 12.831152384143476,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": {
+        "type": "cqr",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 0.41954766920855313,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "interval_method": "cqr"
+    },
+    "baseline_median": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "baseline_median",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.9660107334525939,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9726224783861672,
+          "elevated_or_above_recall": 0.9037859379447766,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9215185464677541,
+          "macro_f1": 0.9642589372369158,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1620,
+                48,
+                9,
+                0
+              ],
+              [
+                0,
+                4682,
+                667,
+                0
+              ],
+              [
+                0,
+                0,
+                17456,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.500062391814641,
+          "rmse": 10.115468045373403,
+          "mae_non_floor": 7.841767881139579,
+          "rmse_non_floor": 8.673188508315638,
+          "mae_high_risk": 13.001050328982648,
+          "rmse_high_risk": 13.018947694380984,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9504942406666123,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 18132,
+            "Maneuver planning review": 1620,
+            "Monitor": 4730
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06617106445551835,
+          "human_review_fraction": 0.7406257658688016,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.94538976037388,
+            "upper": 0.9886400058275059
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.412646203690922,
+            "upper": 9.605713915857603
+          },
+          "coverage": {
+            "lower": 0.9414121535912001,
+            "upper": 0.9588430798081466
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 1.0,
+          "critical_f2": 1.0,
+          "elevated_or_above_recall": 0.9471458773784355,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9572649572649572,
+          "macro_f1": 0.9845979341320321,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                317,
+                25,
+                0
+              ],
+              [
+                0,
+                0,
+                1499,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": null,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_precision",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 10.446935838175648,
+          "rmse": 10.825253245935299,
+          "mae_non_floor": 7.886384670969941,
+          "rmse_non_floor": 8.617567934128129,
+          "mae_high_risk": 12.692254580874373,
+          "rmse_high_risk": 12.700663170233975,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9822515212981744,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 1524,
+            "Maneuver planning review": 131,
+            "Monitor": 317
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06643002028397565,
+          "human_review_fraction": 0.7728194726166329,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 10.309092674711483,
+            "upper": 10.57785927655945
+          },
+          "coverage": {
+            "lower": 0.9761536511156186,
+            "upper": 0.9883367139959433
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.9577814569536424,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9659375521789947,
+          "elevated_or_above_recall": 0.8752709359605911,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.897663891358823,
+          "macro_f1": 0.9530558040035283,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1157,
+                42,
+                9,
+                0
+              ],
+              [
+                0,
+                3243,
+                624,
+                0
+              ],
+              [
+                0,
+                0,
+                11788,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.00223318618514,
+          "rmse": 9.698165100392265,
+          "mae_non_floor": 7.966109453513629,
+          "rmse_non_floor": 8.779245335891405,
+          "mae_high_risk": 12.98221943332811,
+          "rmse_high_risk": 12.999206995721435,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9345905236316195,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 12421,
+            "Maneuver planning review": 1157,
+            "Monitor": 3285
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06861175354326039,
+          "human_review_fraction": 0.7365830516515448,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9204483062691334,
+            "upper": 0.981914273060863
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 8.853798518035283,
+            "upper": 9.128395278813274
+          },
+          "coverage": {
+            "lower": 0.9235151724175212,
+            "upper": 0.9433391737996664
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 0.9914529914529915,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9931506849315068,
+          "elevated_or_above_recall": 0.9254385964912281,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9394479073909172,
+          "macro_f1": 0.9762495155975698,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                116,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                305,
+                34,
+                0
+              ],
+              [
+                0,
+                0,
+                1322,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.60722914458758,
+          "rmse": 10.174489285310356,
+          "mae_non_floor": 7.84688539360791,
+          "rmse_non_floor": 8.621327096278328,
+          "mae_high_risk": 12.898201359899973,
+          "rmse_high_risk": 12.91340967302406,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9617547806524185,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 1356,
+            "Maneuver planning review": 116,
+            "Monitor": 306
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06524184476940383,
+          "human_review_fraction": 0.7626546681664792,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9698892901545202,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.416554371499464,
+            "upper": 9.75358299771734
+          },
+          "coverage": {
+            "lower": 0.9533183352080989,
+            "upper": 0.9702052868391451
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 0.635,
+      "timing_breakdown_seconds": {
+        "features": 0.1132,
+        "point_model": 0.0,
+        "policy": 0.0765,
+        "total": 0.2067
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 12.486086935593027,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": null,
+      "interval_method": "residual"
+    },
+    "baseline_linear": {
+      "scope": {
+        "partition": "eval",
+        "dataset": "kelvins_train",
+        "model": "baseline_linear",
+        "n_events": 1972
+      },
+      "counts": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_rows": 1677,
+        "n_critical_events": 271,
+        "n_elevated_rows": 5349,
+        "n_floor_rows": 10027,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24482,
+        "n_events": 1972,
+        "n_critical_true": 1677,
+        "tier": {
+          "critical_recall": 0.9660107334525939,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9726224783861672,
+          "elevated_or_above_recall": 0.9037859379447766,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9215185464677541,
+          "macro_f1": 0.9642589372369158,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1620,
+                48,
+                9,
+                0
+              ],
+              [
+                0,
+                4682,
+                667,
+                0
+              ],
+              [
+                0,
+                0,
+                17456,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.221886302314193,
+          "rmse": 9.807516577471945,
+          "mae_non_floor": 8.58959948287948,
+          "rmse_non_floor": 9.391013684839608,
+          "mae_high_risk": 10.703294411627978,
+          "rmse_high_risk": 10.857701441949452,
+          "n_non_floor": 14455,
+          "n_high_risk": 1637,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9687525528960053,
+          "median_width": 24.792580864760556,
+          "n_with_interval": 24482,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 8366,
+            "Human review": 13433,
+            "Maneuver planning review": 1620,
+            "Monitor": 1063
+          },
+          "auto_clear_fraction": 0.3417204476758435,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06617106445551835,
+          "human_review_fraction": 0.5486888326117147,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.94538976037388,
+            "upper": 0.9886400058275059
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.132569442388316,
+            "upper": 9.339037771431254
+          },
+          "coverage": {
+            "lower": 0.9614511243546922,
+            "upper": 0.9752914611808092
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 1972,
+        "n_events": 1972,
+        "n_critical_true": 131,
+        "tier": {
+          "critical_recall": 1.0,
+          "critical_precision": 1.0,
+          "critical_f2": 1.0,
+          "elevated_or_above_recall": 0.9471458773784355,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9572649572649572,
+          "macro_f1": 0.9845979341320321,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                131,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                317,
+                25,
+                0
+              ],
+              [
+                0,
+                0,
+                1499,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": null,
+          "critical_precision": null,
+          "critical_f2": null,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_recall",
+            "critical_precision",
+            "critical_f2"
+          ]
+        },
+        "regression": {
+          "mae": 9.703248867261436,
+          "rmse": 10.150462708926737,
+          "mae_non_floor": 9.454825600681822,
+          "rmse_non_floor": 10.15992756305701,
+          "mae_high_risk": 10.949596680693192,
+          "rmse_high_risk": 11.14072650528037,
+          "n_non_floor": 711,
+          "n_high_risk": 60,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9497971602434077,
+          "median_width": 23.964434846935994,
+          "n_with_interval": 1972,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 895,
+            "Human review": 860,
+            "Maneuver planning review": 131,
+            "Monitor": 86
+          },
+          "auto_clear_fraction": 0.4538539553752535,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06643002028397565,
+          "human_review_fraction": 0.43610547667342797,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.575344232787701,
+            "upper": 9.827722078008449
+          },
+          "coverage": {
+            "lower": 0.9396424949290061,
+            "upper": 0.9594574036511155
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 16863,
+        "n_events": 1778,
+        "n_critical_true": 1208,
+        "tier": {
+          "critical_recall": 0.9577814569536424,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9659375521789947,
+          "elevated_or_above_recall": 0.8752709359605911,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.897663891358823,
+          "macro_f1": 0.9530558040035283,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                1157,
+                42,
+                9,
+                0
+              ],
+              [
+                0,
+                3243,
+                624,
+                0
+              ],
+              [
+                0,
+                0,
+                11788,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.092292949009453,
+          "rmse": 9.735689168857242,
+          "mae_non_floor": 8.726162206362705,
+          "rmse_non_floor": 9.511443661678884,
+          "mae_high_risk": 10.799000297295327,
+          "rmse_high_risk": 10.940895866851783,
+          "n_non_floor": 12411,
+          "n_high_risk": 1478,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9731364525885073,
+          "median_width": 24.873362429467154,
+          "n_with_interval": 16863,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 5505,
+            "Human review": 9425,
+            "Maneuver planning review": 1157,
+            "Monitor": 776
+          },
+          "auto_clear_fraction": 0.326454367550258,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06861175354326039,
+          "human_review_fraction": 0.558915969874874,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9204483062691334,
+            "upper": 0.981914273060863
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 8.96921581458021,
+            "upper": 9.223829388531056
+          },
+          "coverage": {
+            "lower": 0.965599680274046,
+            "upper": 0.9797137272993093
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 1778,
+        "n_events": 1778,
+        "n_critical_true": 117,
+        "tier": {
+          "critical_recall": 0.9914529914529915,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9931506849315068,
+          "elevated_or_above_recall": 0.9254385964912281,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9394479073909172,
+          "macro_f1": 0.9762495155975698,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                116,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                305,
+                34,
+                0
+              ],
+              [
+                0,
+                0,
+                1322,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.40149307368991,
+          "rmse": 9.968254594861104,
+          "mae_non_floor": 8.862336580713563,
+          "rmse_non_floor": 9.684097921917559,
+          "mae_high_risk": 10.737508184272505,
+          "rmse_high_risk": 10.936453528559422,
+          "n_non_floor": 1004,
+          "n_high_risk": 93,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9623172103487064,
+          "median_width": 24.46831705056944,
+          "n_with_interval": 1778,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 681,
+            "Human review": 907,
+            "Maneuver planning review": 116,
+            "Monitor": 74
+          },
+          "auto_clear_fraction": 0.3830146231721035,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.06524184476940383,
+          "human_review_fraction": 0.5101237345331834,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9698892901545202,
+            "upper": 1.0
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.250095510312132,
+            "upper": 9.547417311041771
+          },
+          "coverage": {
+            "lower": 0.9521794150731159,
+            "upper": 0.9719066366704162
+          },
+          "undefined": []
+        }
+      },
+      "batch_inference_seconds": 0.573,
+      "timing_breakdown_seconds": {
+        "features": 0.048,
+        "point_model": 0.0,
+        "policy": 0.1604,
+        "total": 0.228
+      },
+      "conformal": {
+        "type": "split_conformal",
+        "coverage": 0.9,
+        "min_events": 30,
+        "status": "ok",
+        "q_hat": 14.372831283341352,
+        "n_events": 1316,
+        "n_rows": 16531
+      },
+      "cqr": null,
+      "interval_method": "residual"
+    }
+  },
+  "comparison_latest_cdm": [
+    {
+      "model": "lgbm_single_cdm",
+      "critical_recall": 1.0,
+      "critical_precision": 0.9849624060150376,
+      "critical_f2": 0.9969558599695587,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": 0.0,
+      "macro_f1": 0.985365763991006,
+      "mae": 2.4374167342675412,
+      "mae_non_floor": 4.215727450306381,
+      "mae_high_risk": 2.451628521189066,
+      "coverage": 0.9721095334685599,
+      "median_width": 14.852460348600797,
+      "auto_clear_fraction": 0.6658215010141988,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_physics",
+      "critical_recall": 1.0,
+      "critical_precision": 0.9924242424242424,
+      "critical_f2": 0.9984756097560975,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": 0.0,
+      "macro_f1": 0.9853331432610677,
+      "mae": 2.3952791146353305,
+      "mae_non_floor": 4.2355819384443105,
+      "mae_high_risk": 2.575282743298802,
+      "coverage": 0.9670385395537525,
+      "median_width": 14.561096079089722,
+      "auto_clear_fraction": 0.6810344827586207,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history",
+      "critical_recall": 1.0,
+      "critical_precision": 0.9849624060150376,
+      "critical_f2": 0.9969558599695587,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": 0.0,
+      "macro_f1": 0.9874394848545514,
+      "mae": 2.099327725096258,
+      "mae_non_floor": 3.6100911190657023,
+      "mae_high_risk": 2.3843566152167006,
+      "coverage": 0.9726166328600405,
+      "median_width": 12.827016732433425,
+      "auto_clear_fraction": 0.6800202839756593,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history_weighted",
+      "critical_recall": 1.0,
+      "critical_precision": 1.0,
+      "critical_f2": 1.0,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": 0.0,
+      "macro_f1": 0.9921928454913789,
+      "mae": 2.2931658391549408,
+      "mae_non_floor": 3.2964004502949797,
+      "mae_high_risk": 1.1554367582600409,
+      "coverage": 0.9726166328600405,
+      "median_width": 12.829286386413,
+      "auto_clear_fraction": 0.6810344827586207,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history_l2",
+      "critical_recall": 1.0,
+      "critical_precision": 0.9562043795620438,
+      "critical_f2": 0.9909228441754916,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": 0.0,
+      "macro_f1": 0.9794362551868,
+      "mae": 2.1830500774324073,
+      "mae_non_floor": 3.848737283588843,
+      "mae_high_risk": 2.716542797706815,
+      "coverage": 0.9726166328600405,
+      "median_width": 12.829286386413,
+      "auto_clear_fraction": 0.6805273833671399,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history_l2_monotone",
+      "critical_recall": 1.0,
+      "critical_precision": 0.9492753623188406,
+      "critical_f2": 0.9894259818731118,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": 0.0,
+      "macro_f1": 0.9769351711710156,
+      "mae": 2.210520418337114,
+      "mae_non_floor": 3.9060136372906276,
+      "mae_high_risk": 2.8229657816176736,
+      "coverage": 0.9726166328600405,
+      "median_width": 12.829286386413,
+      "auto_clear_fraction": 0.6805273833671399,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "baseline_median",
+      "critical_recall": 1.0,
+      "critical_precision": 1.0,
+      "critical_f2": 1.0,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": null,
+      "macro_f1": 0.9845979341320321,
+      "mae": 10.446935838175648,
+      "mae_non_floor": 7.886384670969941,
+      "mae_high_risk": 12.692254580874373,
+      "coverage": 0.9822515212981744,
+      "median_width": 24.376759395404882,
+      "auto_clear_fraction": 0.0,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "baseline_linear",
+      "critical_recall": 1.0,
+      "critical_precision": 1.0,
+      "critical_f2": 1.0,
+      "pc_only_critical_recall": null,
+      "pc_only_critical_precision": null,
+      "macro_f1": 0.9845979341320321,
+      "mae": 9.703248867261436,
+      "mae_non_floor": 9.454825600681822,
+      "mae_high_risk": 10.949596680693192,
+      "coverage": 0.9497971602434077,
+      "median_width": 23.964434846935994,
+      "auto_clear_fraction": 0.4538539553752535,
+      "true_critical_routed_to_auto_clear_n": 0
+    }
+  ],
+  "comparison_row_level": [
+    {
+      "model": "lgbm_single_cdm",
+      "critical_recall": 0.9797257006559332,
+      "critical_precision": 0.973918197984588,
+      "critical_f2": 0.9785586658725431,
+      "pc_only_critical_recall": 0.4507042253521127,
+      "pc_only_critical_precision": 0.48484848484848486,
+      "macro_f1": 0.9711280134951802,
+      "mae": 3.535562983502861,
+      "mae_non_floor": 3.812821171630155,
+      "mae_high_risk": 2.1315763930751905,
+      "coverage": 0.9698962503063475,
+      "median_width": 20.71877788338175,
+      "auto_clear_fraction": 0.598603055305939,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_physics",
+      "critical_recall": 0.977340488968396,
+      "critical_precision": 0.9849759615384616,
+      "critical_f2": 0.9788580984233157,
+      "pc_only_critical_recall": 0.5070422535211268,
+      "pc_only_critical_precision": 0.6206896551724138,
+      "macro_f1": 0.9729603177535258,
+      "mae": 3.3028395493801455,
+      "mae_non_floor": 3.612074838053946,
+      "mae_high_risk": 1.8601715738273605,
+      "coverage": 0.9689976309125071,
+      "median_width": 20.63714644980901,
+      "auto_clear_fraction": 0.6206192304550282,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history",
+      "critical_recall": 0.9785330948121646,
+      "critical_precision": 0.9675707547169812,
+      "critical_f2": 0.9763207996192289,
+      "pc_only_critical_recall": 0.4225352112676056,
+      "pc_only_critical_precision": 0.38961038961038963,
+      "macro_f1": 0.9687535490108616,
+      "mae": 2.9187348821905816,
+      "mae_non_floor": 3.290192274807689,
+      "mae_high_risk": 1.8378214283661882,
+      "coverage": 0.9667919287639899,
+      "median_width": 20.16441349856705,
+      "auto_clear_fraction": 0.6279715709500858,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history_weighted",
+      "critical_recall": 0.9767441860465116,
+      "critical_precision": 0.9891304347826086,
+      "critical_f2": 0.979196556671449,
+      "pc_only_critical_recall": 0.4647887323943662,
+      "pc_only_critical_precision": 0.6285714285714286,
+      "macro_f1": 0.9763433890423591,
+      "mae": 3.034513746406583,
+      "mae_non_floor": 3.02945314401049,
+      "mae_high_risk": 0.8322935313911557,
+      "coverage": 0.9667510824279062,
+      "median_width": 20.166311487606784,
+      "auto_clear_fraction": 0.6280532636222531,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history_l2",
+      "critical_recall": 0.9797257006559332,
+      "critical_precision": 0.9027472527472528,
+      "critical_f2": 0.9632973733583491,
+      "pc_only_critical_recall": 0.4225352112676056,
+      "pc_only_critical_precision": 0.20270270270270271,
+      "macro_f1": 0.9526131603970023,
+      "mae": 2.939864229389696,
+      "mae_non_floor": 3.33803126811768,
+      "mae_high_risk": 2.1514083783919293,
+      "coverage": 0.9670370067804918,
+      "median_width": 20.166683152546625,
+      "auto_clear_fraction": 0.6266644881954089,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "lgbm_history_l2_monotone",
+      "critical_recall": 0.9809183064997018,
+      "critical_precision": 0.9053384700055036,
+      "critical_f2": 0.9648093841642228,
+      "pc_only_critical_recall": 0.49295774647887325,
+      "pc_only_critical_precision": 0.23411371237458195,
+      "macro_f1": 0.9531762509508396,
+      "mae": 2.9487611836874743,
+      "mae_non_floor": 3.3411738686175787,
+      "mae_high_risk": 2.082115547828095,
+      "coverage": 0.9669144677722409,
+      "median_width": 20.16735505051861,
+      "auto_clear_fraction": 0.6265827955232416,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "baseline_median",
+      "critical_recall": 0.9660107334525939,
+      "critical_precision": 1.0,
+      "critical_f2": 0.9726224783861672,
+      "pc_only_critical_recall": 0.0,
+      "pc_only_critical_precision": null,
+      "macro_f1": 0.9642589372369158,
+      "mae": 9.500062391814641,
+      "mae_non_floor": 7.841767881139579,
+      "mae_high_risk": 13.001050328982648,
+      "coverage": 0.9504942406666123,
+      "median_width": 24.376759395404882,
+      "auto_clear_fraction": 0.0,
+      "true_critical_routed_to_auto_clear_n": 0
+    },
+    {
+      "model": "baseline_linear",
+      "critical_recall": 0.9660107334525939,
+      "critical_precision": 1.0,
+      "critical_f2": 0.9726224783861672,
+      "pc_only_critical_recall": 0.0,
+      "pc_only_critical_precision": null,
+      "macro_f1": 0.9642589372369158,
+      "mae": 9.221886302314193,
+      "mae_non_floor": 8.58959948287948,
+      "mae_high_risk": 10.703294411627978,
+      "coverage": 0.9687525528960053,
+      "median_width": 24.792580864760556,
+      "auto_clear_fraction": 0.3417204476758435,
+      "true_critical_routed_to_auto_clear_n": 0
+    }
+  ],
+  "delivered_test_file": {
+    "lgbm_history_weighted": {
+      "scope": {
+        "partition": "delivered_test_file",
+        "dataset": "kelvins_test",
+        "model": "lgbm_history_weighted",
+        "note": "labels present in delivered test file; rows stop at >= 2 days before TCA"
+      },
+      "counts": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_rows": 2227,
+        "n_critical_events": 372,
+        "n_elevated_rows": 6501,
+        "n_floor_rows": 6884,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_true": 2227,
+        "tier": {
+          "critical_recall": 0.9721598563089358,
+          "critical_precision": 0.9931192660550459,
+          "critical_f2": 0.9762806637806638,
+          "elevated_or_above_recall": 0.961044912923923,
+          "elevated_or_above_precision": 0.9674740484429065,
+          "elevated_or_above_f2": 0.962323895186086,
+          "macro_f1": 0.9696730221021133,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                2165,
+                62,
+                0,
+                0
+              ],
+              [
+                15,
+                6146,
+                340,
+                0
+              ],
+              [
+                0,
+                282,
+                15474,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5708154506437768,
+          "critical_precision": 0.7037037037037037,
+          "critical_f2": 0.5932203389830508,
+          "n_true_positive_rows": 133,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.2691072682487254,
+          "rmse": 5.530666525131935,
+          "mae_non_floor": 2.766767742677008,
+          "rmse_non_floor": 4.420433191304451,
+          "mae_high_risk": 0.6711016061848801,
+          "rmse_high_risk": 1.4941114963066138,
+          "n_non_floor": 17600,
+          "n_high_risk": 3263,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9727168763273975,
+          "median_width": 22.03410079400848,
+          "n_with_interval": 24484,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 13188,
+            "Human review": 3087,
+            "Maneuver planning review": 2180,
+            "Monitor": 6029
+          },
+          "auto_clear_fraction": 0.5386374775363503,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08903773893154714,
+          "human_review_fraction": 0.12608233948701192,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": 0.6560526641017006,
+          "brier": 0.004414252574074698,
+          "n_pos": 233,
+          "undefined": []
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9541653355204768,
+            "upper": 0.986122399219766
+          },
+          "critical_precision": {
+            "lower": 0.9869060834598803,
+            "upper": 0.9972367547436017
+          },
+          "mae": {
+            "lower": 3.145053093392072,
+            "upper": 3.4120898977461716
+          },
+          "coverage": {
+            "lower": 0.9683837575468219,
+            "upper": 0.9769739961414124
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 2167,
+        "n_events": 2167,
+        "n_critical_true": 186,
+        "tier": {
+          "critical_recall": 0.978494623655914,
+          "critical_precision": 0.994535519125683,
+          "critical_f2": 0.9816612729234088,
+          "elevated_or_above_recall": 0.9591836734693877,
+          "elevated_or_above_precision": 0.9894736842105263,
+          "elevated_or_above_f2": 0.9650924024640657,
+          "macro_f1": 0.9779945041334099,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                182,
+                4,
+                0,
+                0
+              ],
+              [
+                1,
+                471,
+                28,
+                0
+              ],
+              [
+                0,
+                7,
+                1474,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.6086956521739131,
+          "critical_precision": 0.7,
+          "critical_f2": 0.6250000000000001,
+          "n_true_positive_rows": 14,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.008918047088116,
+          "rmse": 5.356582141535238,
+          "mae_non_floor": 3.7784529672189677,
+          "rmse_non_floor": 5.6151504926671905,
+          "mae_high_risk": 1.4706686260403128,
+          "rmse_high_risk": 2.8432415272071414,
+          "n_non_floor": 1011,
+          "n_high_risk": 178,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9640055376095985,
+          "median_width": 17.607795134308738,
+          "n_with_interval": 2167,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1359,
+            "Human review": 160,
+            "Maneuver planning review": 183,
+            "Monitor": 465
+          },
+          "auto_clear_fraction": 0.6271342870327642,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.0844485463774804,
+          "human_review_fraction": 0.07383479464697738,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": 0.8108199100272916,
+          "brier": 0.0035740588198798794,
+          "n_pos": 23,
+          "undefined": []
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9542857142857143,
+            "upper": 0.9952205882352941
+          },
+          "critical_precision": {
+            "lower": 0.9822293447293448,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 2.8567756202811476,
+            "upper": 3.1854412286581106
+          },
+          "coverage": {
+            "lower": 0.957544993077988,
+            "upper": 0.970466082141209
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_true": 2227,
+        "tier": {
+          "critical_recall": 0.9721598563089358,
+          "critical_precision": 0.9931192660550459,
+          "critical_f2": 0.9762806637806638,
+          "elevated_or_above_recall": 0.961044912923923,
+          "elevated_or_above_precision": 0.9674740484429065,
+          "elevated_or_above_f2": 0.962323895186086,
+          "macro_f1": 0.9696730221021133,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                2165,
+                62,
+                0,
+                0
+              ],
+              [
+                15,
+                6146,
+                340,
+                0
+              ],
+              [
+                0,
+                282,
+                15474,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.5708154506437768,
+          "critical_precision": 0.7037037037037037,
+          "critical_f2": 0.5932203389830508,
+          "n_true_positive_rows": 133,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.2691072682487254,
+          "rmse": 5.530666525131935,
+          "mae_non_floor": 2.766767742677008,
+          "rmse_non_floor": 4.420433191304451,
+          "mae_high_risk": 0.6711016061848801,
+          "rmse_high_risk": 1.4941114963066138,
+          "n_non_floor": 17600,
+          "n_high_risk": 3263,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9727168763273975,
+          "median_width": 22.03410079400848,
+          "n_with_interval": 24484,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 13188,
+            "Human review": 3087,
+            "Maneuver planning review": 2180,
+            "Monitor": 6029
+          },
+          "auto_clear_fraction": 0.5386374775363503,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08903773893154714,
+          "human_review_fraction": 0.12608233948701192,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": 0.6560526641017006,
+          "brier": 0.004414252574074698,
+          "n_pos": 233,
+          "undefined": []
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9541653355204768,
+            "upper": 0.986122399219766
+          },
+          "critical_precision": {
+            "lower": 0.9869060834598803,
+            "upper": 0.9972367547436017
+          },
+          "mae": {
+            "lower": 3.145053093392072,
+            "upper": 3.4120898977461716
+          },
+          "coverage": {
+            "lower": 0.9683837575468219,
+            "upper": 0.9769739961414124
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 2167,
+        "n_events": 2167,
+        "n_critical_true": 186,
+        "tier": {
+          "critical_recall": 0.978494623655914,
+          "critical_precision": 0.994535519125683,
+          "critical_f2": 0.9816612729234088,
+          "elevated_or_above_recall": 0.9591836734693877,
+          "elevated_or_above_precision": 0.9894736842105263,
+          "elevated_or_above_f2": 0.9650924024640657,
+          "macro_f1": 0.9779945041334099,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                182,
+                4,
+                0,
+                0
+              ],
+              [
+                1,
+                471,
+                28,
+                0
+              ],
+              [
+                0,
+                7,
+                1474,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.6086956521739131,
+          "critical_precision": 0.7,
+          "critical_f2": 0.6250000000000001,
+          "n_true_positive_rows": 14,
+          "undefined": []
+        },
+        "regression": {
+          "mae": 3.008918047088116,
+          "rmse": 5.356582141535238,
+          "mae_non_floor": 3.7784529672189677,
+          "rmse_non_floor": 5.6151504926671905,
+          "mae_high_risk": 1.4706686260403128,
+          "rmse_high_risk": 2.8432415272071414,
+          "n_non_floor": 1011,
+          "n_high_risk": 178,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9640055376095985,
+          "median_width": 17.607795134308738,
+          "n_with_interval": 2167,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 1359,
+            "Human review": 160,
+            "Maneuver planning review": 183,
+            "Monitor": 465
+          },
+          "auto_clear_fraction": 0.6271342870327642,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.0844485463774804,
+          "human_review_fraction": 0.07383479464697738,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": 0.8108199100272916,
+          "brier": 0.0035740588198798794,
+          "n_pos": 23,
+          "undefined": []
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9542857142857143,
+            "upper": 0.9952205882352941
+          },
+          "critical_precision": {
+            "lower": 0.9822293447293448,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 2.8567756202811476,
+            "upper": 3.1854412286581106
+          },
+          "coverage": {
+            "lower": 0.957544993077988,
+            "upper": 0.970466082141209
+          },
+          "undefined": []
+        }
+      }
+    },
+    "baseline_median": {
+      "scope": {
+        "partition": "delivered_test_file",
+        "dataset": "kelvins_test",
+        "model": "baseline_median",
+        "note": "labels present in delivered test file; rows stop at >= 2 days before TCA"
+      },
+      "counts": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_rows": 2227,
+        "n_critical_events": 372,
+        "n_elevated_rows": 6501,
+        "n_floor_rows": 6884,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_true": 2227,
+        "tier": {
+          "critical_recall": 0.9591378536147284,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9670409272002898,
+          "elevated_or_above_recall": 0.8816452795600367,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.903020630412843,
+          "macro_f1": 0.9518427204574245,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                2136,
+                83,
+                8,
+                0
+              ],
+              [
+                0,
+                5476,
+                1025,
+                0
+              ],
+              [
+                0,
+                0,
+                15756,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.272187290676023,
+          "rmse": 9.969567802541322,
+          "mae_non_floor": 8.248002523384484,
+          "rmse_non_floor": 9.108578044994712,
+          "mae_high_risk": 12.986553709206287,
+          "rmse_high_risk": 13.004086378905132,
+          "n_non_floor": 17600,
+          "n_high_risk": 3263,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9025486031694168,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 24484,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 16789,
+            "Maneuver planning review": 2136,
+            "Monitor": 5559
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08724064695311223,
+          "human_review_fraction": 0.6857131187714426,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9346133353897877,
+            "upper": 0.9793779708853237
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.157322448042782,
+            "upper": 9.374155051395931
+          },
+          "coverage": {
+            "lower": 0.8927032547148992,
+            "upper": 0.9149624641331986
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 2167,
+        "n_events": 2167,
+        "n_critical_true": 186,
+        "tier": {
+          "critical_recall": 0.9623655913978495,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9696641386782232,
+          "elevated_or_above_recall": 0.9416909620991254,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9528023598820059,
+          "macro_f1": 0.9729645125874588,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                179,
+                7,
+                0,
+                0
+              ],
+              [
+                0,
+                460,
+                40,
+                0
+              ],
+              [
+                0,
+                0,
+                1481,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 10.06441567873948,
+          "rmse": 10.612946225047835,
+          "mae_non_floor": 7.976232850925766,
+          "rmse_non_floor": 8.930692812633811,
+          "mae_high_risk": 13.127590957135187,
+          "rmse_high_risk": 13.149243420656372,
+          "n_non_floor": 1011,
+          "n_high_risk": 178,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9372404245500692,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 2167,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 1521,
+            "Maneuver planning review": 179,
+            "Monitor": 467
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08260267651130596,
+          "human_review_fraction": 0.7018920166128289,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9371013824884793,
+            "upper": 0.988641124936516
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.920070498889858,
+            "upper": 10.191611894663904
+          },
+          "coverage": {
+            "lower": 0.9270881402861099,
+            "upper": 0.9483271804337794
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_true": 2227,
+        "tier": {
+          "critical_recall": 0.9591378536147284,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9670409272002898,
+          "elevated_or_above_recall": 0.8816452795600367,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.903020630412843,
+          "macro_f1": 0.9518427204574245,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                2136,
+                83,
+                8,
+                0
+              ],
+              [
+                0,
+                5476,
+                1025,
+                0
+              ],
+              [
+                0,
+                0,
+                15756,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.272187290676023,
+          "rmse": 9.969567802541322,
+          "mae_non_floor": 8.248002523384484,
+          "rmse_non_floor": 9.108578044994712,
+          "mae_high_risk": 12.986553709206287,
+          "rmse_high_risk": 13.004086378905132,
+          "n_non_floor": 17600,
+          "n_high_risk": 3263,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9025486031694168,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 24484,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 16789,
+            "Maneuver planning review": 2136,
+            "Monitor": 5559
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08724064695311223,
+          "human_review_fraction": 0.6857131187714426,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9346133353897877,
+            "upper": 0.9793779708853237
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.157322448042782,
+            "upper": 9.374155051395931
+          },
+          "coverage": {
+            "lower": 0.8927032547148992,
+            "upper": 0.9149624641331986
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 2167,
+        "n_events": 2167,
+        "n_critical_true": 186,
+        "tier": {
+          "critical_recall": 0.9623655913978495,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9696641386782232,
+          "elevated_or_above_recall": 0.9416909620991254,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9528023598820059,
+          "macro_f1": 0.9729645125874588,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                179,
+                7,
+                0,
+                0
+              ],
+              [
+                0,
+                460,
+                40,
+                0
+              ],
+              [
+                0,
+                0,
+                1481,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 10.06441567873948,
+          "rmse": 10.612946225047835,
+          "mae_non_floor": 7.976232850925766,
+          "rmse_non_floor": 8.930692812633811,
+          "mae_high_risk": 13.127590957135187,
+          "rmse_high_risk": 13.149243420656372,
+          "n_non_floor": 1011,
+          "n_high_risk": 178,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9372404245500692,
+          "median_width": 24.376759395404882,
+          "n_with_interval": 2167,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Human review": 1521,
+            "Maneuver planning review": 179,
+            "Monitor": 467
+          },
+          "auto_clear_fraction": 0.0,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08260267651130596,
+          "human_review_fraction": 0.7018920166128289,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9371013824884793,
+            "upper": 0.988641124936516
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 9.920070498889858,
+            "upper": 10.191611894663904
+          },
+          "coverage": {
+            "lower": 0.9270881402861099,
+            "upper": 0.9483271804337794
+          },
+          "undefined": []
+        }
+      }
+    },
+    "baseline_linear": {
+      "scope": {
+        "partition": "delivered_test_file",
+        "dataset": "kelvins_test",
+        "model": "baseline_linear",
+        "note": "labels present in delivered test file; rows stop at >= 2 days before TCA"
+      },
+      "counts": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_rows": 2227,
+        "n_critical_events": 372,
+        "n_elevated_rows": 6501,
+        "n_floor_rows": 6884,
+        "n_invalid_rows": 0
+      },
+      "row_level": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_true": 2227,
+        "tier": {
+          "critical_recall": 0.9591378536147284,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9670409272002898,
+          "elevated_or_above_recall": 0.8816452795600367,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.903020630412843,
+          "macro_f1": 0.9518427204574245,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                2136,
+                83,
+                8,
+                0
+              ],
+              [
+                0,
+                5476,
+                1025,
+                0
+              ],
+              [
+                0,
+                0,
+                15756,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 8.826914364100373,
+          "rmse": 9.458276313832114,
+          "mae_non_floor": 8.356856308976322,
+          "rmse_non_floor": 9.13458034407626,
+          "mae_high_risk": 10.5361678605305,
+          "rmse_high_risk": 10.666750491973536,
+          "n_non_floor": 17600,
+          "n_high_risk": 3263,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9846430321842836,
+          "median_width": 25.22931693917414,
+          "n_with_interval": 24484,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 6694,
+            "Human review": 14527,
+            "Maneuver planning review": 2136,
+            "Monitor": 1127
+          },
+          "auto_clear_fraction": 0.27340303871916355,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08724064695311223,
+          "human_review_fraction": 0.593326253880085,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9346133353897877,
+            "upper": 0.9793779708853237
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 8.724402656813654,
+            "upper": 8.90483335435573
+          },
+          "coverage": {
+            "lower": 0.9815677135754731,
+            "upper": 0.9882330423886088
+          },
+          "undefined": []
+        }
+      },
+      "latest_cdm": {
+        "n_rows": 2167,
+        "n_events": 2167,
+        "n_critical_true": 186,
+        "tier": {
+          "critical_recall": 0.9623655913978495,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9696641386782232,
+          "elevated_or_above_recall": 0.9416909620991254,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9528023598820059,
+          "macro_f1": 0.9729645125874588,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                179,
+                7,
+                0,
+                0
+              ],
+              [
+                0,
+                460,
+                40,
+                0
+              ],
+              [
+                0,
+                0,
+                1481,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.081915074386021,
+          "rmse": 9.620716121332146,
+          "mae_non_floor": 7.873168197238536,
+          "rmse_non_floor": 8.702881354182962,
+          "mae_high_risk": 9.979309857650861,
+          "rmse_high_risk": 10.13849747281288,
+          "n_non_floor": 1011,
+          "n_high_risk": 178,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9750807568066451,
+          "median_width": 24.995049041732226,
+          "n_with_interval": 2167,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 680,
+            "Human review": 1206,
+            "Maneuver planning review": 179,
+            "Monitor": 102
+          },
+          "auto_clear_fraction": 0.3137978772496539,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08260267651130596,
+          "human_review_fraction": 0.5565297646515921,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9371013824884793,
+            "upper": 0.988641124936516
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 8.95498149616296,
+            "upper": 9.196333133666297
+          },
+          "coverage": {
+            "lower": 0.9690816797415782,
+            "upper": 0.9806183664051684
+          },
+          "undefined": []
+        }
+      },
+      "horizon_slice": {
+        "n_rows": 24484,
+        "n_events": 2167,
+        "n_critical_true": 2227,
+        "tier": {
+          "critical_recall": 0.9591378536147284,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9670409272002898,
+          "elevated_or_above_recall": 0.8816452795600367,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.903020630412843,
+          "macro_f1": 0.9518427204574245,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                2136,
+                83,
+                8,
+                0
+              ],
+              [
+                0,
+                5476,
+                1025,
+                0
+              ],
+              [
+                0,
+                0,
+                15756,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 8.826914364100373,
+          "rmse": 9.458276313832114,
+          "mae_non_floor": 8.356856308976322,
+          "rmse_non_floor": 9.13458034407626,
+          "mae_high_risk": 10.5361678605305,
+          "rmse_high_risk": 10.666750491973536,
+          "n_non_floor": 17600,
+          "n_high_risk": 3263,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9846430321842836,
+          "median_width": 25.22931693917414,
+          "n_with_interval": 24484,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 6694,
+            "Human review": 14527,
+            "Maneuver planning review": 2136,
+            "Monitor": 1127
+          },
+          "auto_clear_fraction": 0.27340303871916355,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08724064695311223,
+          "human_review_fraction": 0.593326253880085,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9346133353897877,
+            "upper": 0.9793779708853237
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 8.724402656813654,
+            "upper": 8.90483335435573
+          },
+          "coverage": {
+            "lower": 0.9815677135754731,
+            "upper": 0.9882330423886088
+          },
+          "undefined": []
+        }
+      },
+      "horizon_latest_cdm": {
+        "n_rows": 2167,
+        "n_events": 2167,
+        "n_critical_true": 186,
+        "tier": {
+          "critical_recall": 0.9623655913978495,
+          "critical_precision": 1.0,
+          "critical_f2": 0.9696641386782232,
+          "elevated_or_above_recall": 0.9416909620991254,
+          "elevated_or_above_precision": 1.0,
+          "elevated_or_above_f2": 0.9528023598820059,
+          "macro_f1": 0.9729645125874588,
+          "confusion": {
+            "labels": [
+              "Critical",
+              "Elevated",
+              "Safe",
+              "Invalid"
+            ],
+            "matrix": [
+              [
+                179,
+                7,
+                0,
+                0
+              ],
+              [
+                0,
+                460,
+                40,
+                0
+              ],
+              [
+                0,
+                0,
+                1481,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ]
+          },
+          "undefined": []
+        },
+        "pc_only": {
+          "critical_recall": 0.0,
+          "critical_precision": null,
+          "critical_f2": 0.0,
+          "n_true_positive_rows": 0,
+          "undefined": [
+            "critical_precision"
+          ]
+        },
+        "regression": {
+          "mae": 9.081915074386021,
+          "rmse": 9.620716121332146,
+          "mae_non_floor": 7.873168197238536,
+          "rmse_non_floor": 8.702881354182962,
+          "mae_high_risk": 9.979309857650861,
+          "rmse_high_risk": 10.13849747281288,
+          "n_non_floor": 1011,
+          "n_high_risk": 178,
+          "undefined": []
+        },
+        "interval": {
+          "nominal_coverage": 0.9,
+          "coverage": 0.9750807568066451,
+          "median_width": 24.995049041732226,
+          "n_with_interval": 2167,
+          "fraction_with_interval": 1.0,
+          "undefined": []
+        },
+        "triage": {
+          "action_counts": {
+            "Auto-clear candidate": 680,
+            "Human review": 1206,
+            "Maneuver planning review": 179,
+            "Monitor": 102
+          },
+          "auto_clear_fraction": 0.3137978772496539,
+          "true_critical_routed_to_auto_clear_n": 0,
+          "true_critical_routed_to_auto_clear_fraction": 0.0,
+          "maneuver_review_fraction": 0.08260267651130596,
+          "human_review_fraction": 0.5565297646515921,
+          "undefined": []
+        },
+        "classifier": {
+          "pr_auc": null,
+          "brier": null,
+          "n_pos": 0,
+          "undefined": [
+            "pr_auc",
+            "brier"
+          ]
+        },
+        "bootstrap": {
+          "critical_recall": {
+            "lower": 0.9371013824884793,
+            "upper": 0.988641124936516
+          },
+          "critical_precision": {
+            "lower": 1.0,
+            "upper": 1.0
+          },
+          "mae": {
+            "lower": 8.95498149616296,
+            "upper": 9.196333133666297
+          },
+          "coverage": {
+            "lower": 0.9690816797415782,
+            "upper": 0.9806183664051684
+          },
+          "undefined": []
+        }
+      }
+    }
+  },
+  "illustrative_cases": {
+    "missed_critical": [
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:128469",
+        "event_id": 10384,
+        "source_row_index": 128469,
+        "prediction_status": "valid",
+        "time_to_tca_days": 2.5179490162037044,
+        "miss_distance_m": 2088.0,
+        "relative_position_r_m": 33.9,
+        "relative_position_t_m": -1108.1,
+        "relative_position_n_m": 1770.3,
+        "object_type": "DEBRIS",
+        "risk_log10_pred": -8.132943655191315,
+        "pc_pred": 7.363026182549126e-09,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -3.539133344327097,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.4386657061628044,
+        "risk_tier": "Elevated",
+        "triage_action": "Human review",
+        "reason_codes": [
+          "DISTANCE_ELEVATED",
+          "UPPER_BOUND_CRITICAL",
+          "MODEL_DISAGREEMENT"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -3.704213059748391,
+        "risk_tier_true": "Critical"
+      },
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:133157",
+        "event_id": 10764,
+        "source_row_index": 133157,
+        "prediction_status": "valid",
+        "time_to_tca_days": 0.785948113425926,
+        "miss_distance_m": 1018.0,
+        "relative_position_r_m": 14.6,
+        "relative_position_t_m": -663.2,
+        "relative_position_n_m": -772.9,
+        "object_type": "PAYLOAD",
+        "risk_log10_pred": -6.721587660859368,
+        "pc_pred": 1.8985075961436101e-07,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -2.9266759223134664,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.402514078743783,
+        "risk_tier": "Elevated",
+        "triage_action": "Human review",
+        "reason_codes": [
+          "DISTANCE_ELEVATED",
+          "UPPER_BOUND_CRITICAL",
+          "MODEL_DISAGREEMENT"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -3.5860300282519386,
+        "risk_tier_true": "Critical"
+      },
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:133155",
+        "event_id": 10764,
+        "source_row_index": 133155,
+        "prediction_status": "valid",
+        "time_to_tca_days": 1.3695488078703704,
+        "miss_distance_m": 1688.0,
+        "relative_position_r_m": 22.0,
+        "relative_position_t_m": -1103.9,
+        "relative_position_n_m": -1277.4,
+        "object_type": "PAYLOAD",
+        "risk_log10_pred": -6.685213961300082,
+        "pc_pred": 2.0643628677660376e-07,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -3.3668388113971757,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.38328864046693634,
+        "risk_tier": "Elevated",
+        "triage_action": "Human review",
+        "reason_codes": [
+          "DISTANCE_ELEVATED",
+          "UPPER_BOUND_CRITICAL",
+          "MODEL_DISAGREEMENT"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -3.6345120151091,
+        "risk_tier_true": "Critical"
+      }
+    ],
+    "false_alarm_critical": [
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:87255",
+        "event_id": 7064,
+        "source_row_index": 87255,
+        "prediction_status": "valid",
+        "time_to_tca_days": 3.4081515277777785,
+        "miss_distance_m": 1480.0,
+        "relative_position_r_m": -32.3,
+        "relative_position_t_m": -1360.4,
+        "relative_position_n_m": 584.2,
+        "object_type": "UNKNOWN",
+        "risk_log10_pred": -3.7794527152077224,
+        "pc_pred": 0.00016616795870348427,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -3.1228822121773114,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.6081500195224337,
+        "risk_tier": "Critical",
+        "triage_action": "Maneuver planning review",
+        "reason_codes": [
+          "PC_CRITICAL",
+          "UPPER_BOUND_CRITICAL"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -11.685711339052505,
+        "risk_tier_true": "Elevated"
+      },
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:87254",
+        "event_id": 7064,
+        "source_row_index": 87254,
+        "prediction_status": "valid",
+        "time_to_tca_days": 3.694343414351852,
+        "miss_distance_m": 1364.0,
+        "relative_position_r_m": -20.7,
+        "relative_position_t_m": -1253.6,
+        "relative_position_n_m": 538.2,
+        "object_type": "UNKNOWN",
+        "risk_log10_pred": -3.9941119664075555,
+        "pc_pred": 0.00010136500207240188,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -3.1607055019604027,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.6099088579679824,
+        "risk_tier": "Critical",
+        "triage_action": "Maneuver planning review",
+        "reason_codes": [
+          "PC_CRITICAL",
+          "UPPER_BOUND_CRITICAL"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -5.555174800490252,
+        "risk_tier_true": "Elevated"
+      },
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:14177",
+        "event_id": 1144,
+        "source_row_index": 14177,
+        "prediction_status": "valid",
+        "time_to_tca_days": 2.3845425694444446,
+        "miss_distance_m": 3502.0,
+        "relative_position_r_m": -60.7,
+        "relative_position_t_m": 3464.4,
+        "relative_position_n_m": -510.4,
+        "object_type": "UNKNOWN",
+        "risk_log10_pred": -3.8171929206565953,
+        "pc_pred": 0.00015233758951786373,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -2.9618329194449284,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.08143926603820238,
+        "risk_tier": "Critical",
+        "triage_action": "Maneuver planning review",
+        "reason_codes": [
+          "PC_CRITICAL",
+          "UPPER_BOUND_CRITICAL"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -5.168962514359975,
+        "risk_tier_true": "Elevated"
+      }
+    ],
+    "uncertain": [
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:133153",
+        "event_id": 10764,
+        "source_row_index": 133153,
+        "prediction_status": "valid",
+        "time_to_tca_days": 1.9082751851851856,
+        "miss_distance_m": 1280.0,
+        "relative_position_r_m": 19.6,
+        "relative_position_t_m": -834.6,
+        "relative_position_n_m": -971.2,
+        "object_type": "PAYLOAD",
+        "risk_log10_pred": -4.756622290717885,
+        "pc_pred": 1.751369205849468e-05,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -2.557870557315246,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.402514078743783,
+        "risk_tier": "Elevated",
+        "triage_action": "Human review",
+        "reason_codes": [
+          "DISTANCE_ELEVATED",
+          "PC_ELEVATED",
+          "UPPER_BOUND_CRITICAL",
+          "MODEL_DISAGREEMENT"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -3.5120136688706065,
+        "risk_tier_true": "Critical"
+      },
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:62357",
+        "event_id": 5013,
+        "source_row_index": 62357,
+        "prediction_status": "valid",
+        "time_to_tca_days": 3.0327130439814813,
+        "miss_distance_m": 2666.0,
+        "relative_position_r_m": 11.3,
+        "relative_position_t_m": -2544.6,
+        "relative_position_n_m": -796.2,
+        "object_type": "DEBRIS",
+        "risk_log10_pred": -4.107788007215739,
+        "pc_pred": 7.802108630273288e-05,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -2.558320101258216,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.5738159898798906,
+        "risk_tier": "Elevated",
+        "triage_action": "Human review",
+        "reason_codes": [
+          "DISTANCE_ELEVATED",
+          "PC_ELEVATED",
+          "UPPER_BOUND_CRITICAL",
+          "MODEL_DISAGREEMENT"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -3.8236193077567298,
+        "risk_tier_true": "Critical"
+      },
+      {
+        "schema_version": "1.0.0",
+        "dataset_id": "kelvins_train",
+        "row_id": "kelvins_train:116585",
+        "event_id": 9413,
+        "source_row_index": 116585,
+        "prediction_status": "valid",
+        "time_to_tca_days": 5.721294386574074,
+        "miss_distance_m": 5609.0,
+        "relative_position_r_m": -12.0,
+        "relative_position_t_m": 5103.5,
+        "relative_position_n_m": 2329.2,
+        "object_type": "DEBRIS",
+        "risk_log10_pred": -4.329802045873498,
+        "pc_pred": 4.6794838646982304e-05,
+        "risk_log10_lower": -30.0,
+        "risk_log10_upper": -2.641836682189555,
+        "interval_nominal_coverage": 0.9,
+        "p_pc_critical": 0.6099088579679824,
+        "risk_tier": "Elevated",
+        "triage_action": "Human review",
+        "reason_codes": [
+          "PC_ELEVATED",
+          "UPPER_BOUND_CRITICAL",
+          "MODEL_DISAGREEMENT"
+        ],
+        "quality_flags": [],
+        "explanation_id": null,
+        "model_version": "lgbm_history_weighted-20261031T043636Z",
+        "feature_version": "features-v1",
+        "policy_version": "policy-v1",
+        "risk_true": -3.6131444708152767,
+        "risk_tier_true": "Critical"
+      }
+    ],
+    "invalid": []
+  },
+  "notes": [
+    "Intervals are conformalized quantile regression intervals (0.05/0.95 LightGBM quantile heads, crossing-corrected, shifted by the finite-sample quantile of per-event max scores) around the dataset risk target (log10 Pc); they describe uncertainty of the dataset label, not every physical uncertainty of an encounter.",
+    "Coverage is reported empirically on evaluation events; no universal or subgroup guarantee is claimed.",
+    "Pc-only metrics isolate model skill from the deterministic distance rule.",
+    "Zero observed misses in a subset would not imply zero operational risk; see event-bootstrap intervals."
+  ],
+  "total_train_seconds": 231.3
+}

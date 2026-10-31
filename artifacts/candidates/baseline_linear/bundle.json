@@ -1,0 +1,87 @@
+{
+  "name": "baseline_linear",
+  "kind": "linear",
+  "model_version": "baseline_linear-20261031T043658Z",
+  "feature_version": "features-v1",
+  "policy_version": "policy-v1",
+  "feature_set": "physics",
+  "feature_columns": [
+    "time_to_tca",
+    "miss_distance",
+    "relative_speed",
+    "relative_position_r",
+    "relative_position_t",
+    "relative_position_n",
+    "c_sigma_r",
+    "t_sigma_r",
+    "max_risk_estimate",
+    "F10",
+    "AP",
+    "c_object_type",
+    "log_miss_distance",
+    "combined_sigma_r",
+    "log_combined_sigma_r",
+    "radial_sep_ratio",
+    "sigma_ratio",
+    "log_c_sigma_r",
+    "log_t_sigma_r",
+    "frac_r",
+    "frac_t",
+    "frac_n",
+    "log_relative_speed",
+    "missing_c_sigma_r",
+    "missing_space_weather",
+    "missing_max_risk",
+    "sigma_suspicious"
+  ],
+  "object_type_categories": [
+    "DEBRIS",
+    "UNKNOWN",
+    "PAYLOAD",
+    "ROCKET BODY",
+    "TBA"
+  ],
+  "split_hash": "9a944695ad01d4bb",
+  "trained_at": "20261031T043658Z",
+  "units": {
+    "miss_distance": "m",
+    "relative_position": "m",
+    "relative_speed": "m/s",
+    "sigma": "m",
+    "time_to_tca": "days",
+    "risk": "log10(Pc)"
+  },
+  "feature_ranges": {},
+  "quantile_alphas": [],
+  "cqr": null,
+  "interval_method": "residual",
+  "conformal": {
+    "type": "split_conformal",
+    "coverage": 0.9,
+    "min_events": 30,
+    "status": "ok",
+    "q_hat": 14.372831283341352,
+    "n_events": 1316,
+    "n_rows": 16531
+  },
+  "sigmoid": null,
+  "baseline": {
+    "type": "linear",
+    "columns": [
+      "max_risk_estimate",
+      "log_miss_distance"
+    ],
+    "coef": [
+      1.694435745228809,
+      -1.9961040370567709
+    ],
+    "intercept": -0.7762537392285722,
+    "medians": {
+      "max_risk_estimate": -6.347705301966982,
+      "log_miss_distance": 4.101042147630405
+    }
+  },
+  "has_booster": false,
+  "has_classifier": false,
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,251 @@
+{
+  "name": "lgbm_history",
+  "kind": "lgbm",
+  "model_version": "lgbm_history-20261031T043610Z",
+  "feature_version": "features-v1",
+  "policy_version": "policy-v1",
+  "feature_set": "history",
+  "feature_columns": [
+    "time_to_tca",
+    "miss_distance",
+    "relative_speed",
+    "relative_position_r",
+    "relative_position_t",
+    "relative_position_n",
+    "c_sigma_r",
+    "t_sigma_r",
+    "max_risk_estimate",
+    "F10",
+    "AP",
+    "c_object_type",
+    "log_miss_distance",
+    "combined_sigma_r",
+    "log_combined_sigma_r",
+    "radial_sep_ratio",
+    "sigma_ratio",
+    "log_c_sigma_r",
+    "log_t_sigma_r",
+    "frac_r",
+    "frac_t",
+    "frac_n",
+    "log_relative_speed",
+    "missing_c_sigma_r",
+    "missing_space_weather",
+    "missing_max_risk",
+    "sigma_suspicious",
+    "n_cdms_so_far",
+    "days_since_first_cdm",
+    "delta_log_miss_distance",
+    "delta_max_risk",
+    "delta_log_combined_sigma",
+    "run_min_log_miss",
+    "run_max_max_risk",
+    "run_min_max_risk",
+    "mre_trend",
+    "has_history"
+  ],
+  "object_type_categories": [
+    "DEBRIS",
+    "UNKNOWN",
+    "PAYLOAD",
+    "ROCKET BODY",
+    "TBA"
+  ],
+  "split_hash": "9a944695ad01d4bb",
+  "trained_at": "20261031T043610Z",
+  "units": {
+    "miss_distance": "m",
+    "relative_position": "m",
+    "relative_speed": "m/s",
+    "sigma": "m",
+    "time_to_tca": "days",
+    "risk": "log10(Pc)"
+  },
+  "params": {
+    "objective": "l1",
+    "learning_rate": 0.04572128610553908,
+    "num_leaves": 23,
+    "min_child_samples": 69,
+    "feature_fraction": 0.8900771875791135,
+    "lambda_l2": 10.0
+  },
+  "num_iteration": 999,
+  "weighted": false,
+  "monotone": null,
+  "note": "+ causal history features",
+  "feature_ranges": {
+    "time_to_tca": {
+      "min": -0.1442702199074074,
+      "max": 6.993043981481482
+    },
+    "miss_distance": {
+      "min": 9.0,
+      "max": 67373.0
+    },
+    "relative_speed": {
+      "min": 16.0,
+      "max": 16631.0
+    },
+    "relative_position_r": {
+      "min": -4675.7,
+      "max": 5284.1
+    },
+    "relative_position_t": {
+      "min": -62184.2,
+      "max": 62184.3
+    },
+    "relative_position_n": {
+      "min": -50995.5,
+      "max": 50996.8
+    },
+    "c_sigma_r": {
+      "min": 0.9406069591464944,
+      "max": 63781363.00000001
+    },
+    "t_sigma_r": {
+      "min": 0.6994956754691197,
+      "max": 63781363.00000001
+    },
+    "max_risk_estimate": {
+      "min": -9.751536282448967,
+      "max": -1.082441979174564
+    },
+    "F10": {
+      "min": 66.0,
+      "max": 246.0
+    },
+    "AP": {
+      "min": 0.0,
+      "max": 108.0
+    },
+    "log_miss_distance": {
+      "min": 0.9542425094393249,
+      "max": 4.8284858861449855
+    },
+    "combined_sigma_r": {
+      "min": 1.6088601555138349,
+      "max": 90200465.6307272
+    },
+    "log_combined_sigma_r": {
+      "min": 0.2065182962257416,
+      "max": 7.955208779452512
+    },
+    "radial_sep_ratio": {
+      "min": 0.0,
+      "max": 1041.656649527676
+    },
+    "sigma_ratio": {
+      "min": 1.4747363726712681e-08,
+      "max": 59037628.72273336
+    },
+    "log_c_sigma_r": {
+      "min": -0.02659181241989804,
+      "max": 7.804693795826569
+    },
+    "log_t_sigma_r": {
+      "min": -0.15521496612669783,
+      "max": 7.804693795826569
+    },
+    "frac_r": {
+      "min": 0.0,
+      "max": 1.05
+    },
+    "frac_t": {
+      "min": 0.0,
+      "max": 1.0000179804372842
+    },
+    "frac_n": {
+      "min": 6.082725060827251e-05,
+      "max": 1.0666666666666667
+    },
+    "log_relative_speed": {
+      "min": 1.2041199826559248,
+      "max": 4.220918363556553
+    },
+    "missing_c_sigma_r": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "missing_space_weather": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "missing_max_risk": {
+      "min": 0.0,
+      "max": 0.0
+    },
+    "sigma_suspicious": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "n_cdms_so_far": {
+      "min": 1.0,
+      "max": 23.0
+    },
+    "days_since_first_cdm": {
+      "min": 0.0,
+      "max": 6.994897928240742
+    },
+    "delta_log_miss_distance": {
+      "min": -2.687093730951318,
+      "max": 2.631063087193119
+    },
+    "delta_max_risk": {
+      "min": -4.928459572194793,
+      "max": 5.02046373888183
+    },
+    "delta_log_combined_sigma": {
+      "min": -7.513270735349228,
+      "max": 7.423835568963393
+    },
+    "run_min_log_miss": {
+      "min": 0.9542425094393249,
+      "max": 4.821559379097062
+    },
+    "run_max_max_risk": {
+      "min": -9.751536282448967,
+      "max": -1.082441979174564
+    },
+    "run_min_max_risk": {
+      "min": -9.751536282448967,
+      "max": -1.6470460882899125
+    },
+    "mre_trend": {
+      "min": -12.185667025814556,
+      "max": 9.880695489147286
+    },
+    "has_history": {
+      "min": 0.0,
+      "max": 1.0
+    }
+  },
+  "train_seconds": 2.93,
+  "quantile_alphas": [
+    0.05,
+    0.95
+  ],
+  "cqr": {
+    "type": "cqr",
+    "coverage": 0.9,
+    "min_events": 30,
+    "status": "ok",
+    "q_hat": 0.41727801522897856,
+    "n_events": 1316,
+    "n_rows": 16531
+  },
+  "interval_method": "cqr",
+  "conformal": {
+    "type": "split_conformal",
+    "coverage": 0.9,
+    "min_events": 30,
+    "status": "ok",
+    "q_hat": 16.30739225152613,
+    "n_events": 1316,
+    "n_rows": 16531
+  },
+  "sigmoid": null,
+  "baseline": null,
+  "has_booster": true,
+  "has_classifier": false,
+  "schema_version": "1.0.0"
+}

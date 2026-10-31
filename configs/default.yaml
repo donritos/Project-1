@@ -1,0 +1,109 @@
+# Collision-risk triage configuration. All distances in metres, speeds in m/s,
+# time_to_tca in days, risk in log10(Pc).
+schema_version: "1.0.0"
+feature_version: "features-v1"
+policy_version: "policy-v1"
+dataset_ids:
+  train: "kelvins_train"
+  test: "kelvins_test"
+
+paths:
+  raw_train: data/raw/train_data.csv
+  raw_test: data/raw/test_data.csv
+  processed_dir: data/processed
+  artifacts_dir: artifacts
+
+units:
+  miss_distance: m
+  relative_position: m
+  relative_speed: m/s
+  sigma: m
+  time_to_tca: days
+  risk: log10(Pc)
+
+# Encoding of max_risk_estimate as verified by the data audit (range -9.8 .. -1.1,
+# never positive). It is ALREADY log10(Pc); do not apply another log.
+max_risk_estimate_encoding: log10
+# max_risk_estimate is NOT a strict upper bound on risk (target exceeds it in
+# ~0.35% of training rows), so predictions are not clipped against it.
+clip_to_max_risk_estimate: false
+
+# Only these source columns may enter feature engineering. `risk` is the target.
+allowed_input_columns:
+  - event_id
+  - time_to_tca
+  - miss_distance
+  - relative_speed
+  - relative_position_r
+  - relative_position_t
+  - relative_position_n
+  - c_object_type
+  - c_sigma_r
+  - t_sigma_r
+  - max_risk_estimate
+  - F10
+  - AP
+target_column: risk
+required_geometry_columns:
+  - time_to_tca
+  - miss_distance
+  - relative_position_r
+  - relative_position_t
+  - relative_position_n
+optional_columns: [relative_speed, c_object_type, c_sigma_r, t_sigma_r, max_risk_estimate, F10, AP]
+
+thresholds:
+  critical_risk: -4.0          # risk_pred >= -4  -> Critical
+  elevated_risk: -6.0          # risk_pred >= -6  -> Elevated
+  critical_distance_m: 1000.0  # miss < 1000 m    -> Critical
+  elevated_distance_max_m: 5000.0  # 1000 <= miss <= 5000 -> Elevated (inclusive both ends)
+  distance_band_inclusive: true
+
+features:
+  epsilon_m: 1.0           # floor for log10(miss_distance)
+  sigma_floor_m: 0.01      # floor for log10(sigma)
+  speed_floor_mps: 0.1     # floor for log10(relative_speed)
+  rtn_norm_tolerance: 0.01 # relative tolerance for |RTN| vs miss_distance check
+  sigma_suspicious_m: 1000000.0  # sigma values above this flagged as suspicious placeholders
+  object_type_categories: [DEBRIS, UNKNOWN, PAYLOAD, "ROCKET BODY", TBA]
+  history_enabled: true
+
+split:
+  seed: 42
+  dev: 0.60
+  policy_cal: 0.15
+  conformal_cal: 0.10
+  eval: 0.15
+  test_horizon_min_days: 2.0  # test rows stop at time_to_tca >= 2 days
+
+model:
+  objective_candidates: [l1, l2]
+  n_search: 10
+  cv_folds: 5
+  learning_rate: [0.03, 0.05]
+  num_leaves: [15, 31]
+  min_child_samples: [50, 200]
+  feature_fraction: [0.8, 1.0]
+  lambda_l2: [0.0, 10.0]
+  max_rounds: 1000
+  early_stopping_rounds: 50
+  target_floor: -30.0
+
+conformal:
+  coverage: 0.90
+  min_calibration_events: 30
+
+triage:
+  review_upper_threshold: -4.0   # upper interval crossing this -> Human review
+  auto_clear_upper_threshold: -6.0
+  classifier_disagreement_prob: 0.5
+  # Quality flags that do NOT block the auto-clear candidate action. Every other
+  # flag (and prediction_status != valid) forces human review instead of auto-clear.
+  auto_clear_allowed_flags: [MISSING_SPACE_WEATHER]
+
+# Interval method: "cqr" (conformalized quantile regression, adaptive width) or
+# "residual" (constant-width split conformal around the point prediction). Both use one
+# score per calibration event (max over its CDMs) and the finite-sample corrected quantile.
+interval:
+  method: cqr
+  quantile_alphas: [0.05, 0.95]

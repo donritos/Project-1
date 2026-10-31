@@ -911,6 +911,47 @@
     "max_risk_estimate_matches_config": true,
     "max_risk_estimate_is_strict_upper_bound": false,
     "rtn_norm_fraction_exceeding_tolerance": 0.0005103483896356236,
-    "test_horizon_restricted": true
+    "test_horizon_restricted": true,
+    "event_ids_restart_per_file": true,
+    "labels_match_recomputed": true
+  },
+  "label_audit": {
+    "workbook_path": "C:\\Users\\chayd\\OneDrive\\Desktop\\helloworld\\collision-risk-triage\\data\\raw\\challenge1_event_labels.xlsx",
+    "workbook_present": false,
+    "labels_source": "derived_from_train_data",
+    "labels_match_recomputed": true,
+    "n_tier_mismatches": 0,
+    "n_events_total": 13154,
+    "n_usable": 11942,
+    "n_unusable": 1212,
+    "n_trivial": 3050,
+    "n_real_forecast": 8892,
+    "class_counts_all": {
+      "Safe": 9843,
+      "Elevated": 2403,
+      "Critical": 908
+    },
+    "class_counts_usable": {
+      "Safe": 8946,
+      "Elevated": 2162,
+      "Critical": 834
+    },
+    "class_counts_trivial": {
+      "Safe": 2328,
+      "Elevated": 478,
+      "Critical": 244
+    },
+    "class_counts_real_forecast": {
+      "Safe": 6618,
+      "Elevated": 1684,
+      "Critical": 590
+    },
+    "n_missions": 19
+  },
+  "horizon": {
+    "min_days": 2.0,
+    "test_min_time_to_tca": 2.000213078703704,
+    "test_all_rows_at_or_beyond_horizon": true,
+    "train_rows_at_or_beyond_horizon": 111939
   }
 }

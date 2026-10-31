@@ -26,6 +26,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, brier_score_loss, f1_score
 
+from .data import event_group_codes
+
 TIER_LABELS: list[str] = ["Critical", "Elevated", "Safe"]
 INVALID_LABEL = "Invalid"
 CONFUSION_LABELS: list[str] = TIER_LABELS + [INVALID_LABEL]
@@ -172,7 +174,9 @@ def _str_col(df: pd.DataFrame, col: str) -> np.ndarray:
 # Views
 # --------------------------------------------------------------------------- #
 def latest_cdm_view(df: pd.DataFrame) -> pd.DataFrame:
-    """One row per event_id: the row with the smallest time_to_tca_days.
+    """One row per (dataset_id, event_id), or event_id if dataset_id is absent.
+
+    Select the row with the smallest time_to_tca_days.
 
     Ties are broken by the last occurrence in input order. All columns are
     preserved; the original index is kept. Rows whose time_to_tca_days is NaN
@@ -184,7 +188,7 @@ def latest_cdm_view(df: pd.DataFrame) -> pd.DataFrame:
     ttca = pd.to_numeric(df["time_to_tca_days"], errors="coerce").to_numpy(dtype=float)
     # NaN sorts last so valid rows are preferred; stable sort keeps input order
     # among ties, so taking the last row per event picks the last occurrence.
-    key = pd.DataFrame({"_event": df["event_id"].to_numpy(), "_ttca": ttca, "_pos": order})
+    key = pd.DataFrame({"_event": event_group_codes(df), "_ttca": ttca, "_pos": order})
     # Per event: the minimal time_to_tca (NaN only when every row is NaN), then
     # among rows at that minimum the largest input position (last occurrence).
     min_ttca = key.groupby("_event", sort=False)["_ttca"].transform("min")
@@ -437,7 +441,7 @@ def _view_metrics(df: pd.DataFrame, cfg: dict, n_bootstrap: int, seed: int) -> d
     tier_pred = _tier_array(df["risk_tier"]) if "risk_tier" in df.columns else np.full(len(df), INVALID_LABEL, dtype=object)
     actions = _str_col(df, "triage_action")
     p_crit = _float_col(df, "p_pc_critical") if "p_pc_critical" in df.columns else None
-    event_id = df["event_id"].to_numpy() if "event_id" in df.columns else np.arange(len(df))
+    event_id = event_group_codes(df)
 
     crit_t = tier_true == "Critical"
     crit_p = tier_pred == "Critical"
@@ -487,7 +491,7 @@ def evaluate_predictions(
     tier_true = _tier_array(df["risk_tier_true"]) if "risk_tier_true" in df.columns else np.full(len(df), INVALID_LABEL, dtype=object)
     status = _str_col(df, "prediction_status")
     ttca = _float_col(df, "time_to_tca_days")
-    event_id = df["event_id"] if "event_id" in df.columns else pd.Series(np.arange(len(df)))
+    event_id = pd.Series(event_group_codes(df), index=df.index)
 
     crit_rows = tier_true == "Critical"
     counts = {

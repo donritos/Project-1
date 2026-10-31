@@ -142,3 +142,51 @@ def test_feature_pipeline_identity_full_vs_single_event(tiny_bundle):
     one = predict_frame(b, df[df["event_id"] == 11], with_explanations=False).predictions
     m = full[full["event_id"] == 11].reset_index(drop=True)
     np.testing.assert_allclose(m["risk_log10_pred"].to_numpy(float), one["risk_log10_pred"].to_numpy(float), atol=1e-9)
+
+
+@pytest.mark.parametrize("bad_time", [None, "not-a-time", np.inf, -np.inf])
+def test_predict_batch_invalid_time_preserves_rows_and_valid_predictions(tiny_bundle, bad_time):
+    b, df = tiny_bundle["bundle"], tiny_bundle["df"]
+    good = df[df["event_id"] == 4].copy()
+    bad = good.iloc[[0]].copy()
+    bad["row_id"] = "invalid-time"
+    bad["time_to_tca"] = bad_time
+    bad["max_risk_estimate"] = -0.1
+    rows = pd.concat([bad, good], ignore_index=True)
+    result = predict_batch(b, rows, dataset_id="check", with_explanations=True)
+    out = result.predictions
+    assert out["row_id"].tolist() == rows["row_id"].tolist()
+    invalid = out.iloc[0]
+    assert invalid["prediction_status"] == "invalid"
+    assert pd.isna(invalid["risk_tier"]) and pd.isna(invalid["explanation_id"])
+    assert invalid["triage_action"] == "Human review - insufficient data"
+    assert "MISSING_REQUIRED_GEOMETRY" in invalid["quality_flags"]
+    assert invalid[["risk_log10_pred", "pc_pred", "risk_log10_lower", "risk_log10_upper"]].isna().all()
+    expected = predict_batch(b, good, dataset_id="check", with_explanations=True)
+    pd.testing.assert_frame_equal(out.iloc[1:].reset_index(drop=True), expected.predictions)
+    assert "invalid-time" not in set(result.explanations["row_id"])
+
+
+def test_predict_batch_missing_time_column_returns_invalid_records(tiny_bundle):
+    b, df = tiny_bundle["bundle"], tiny_bundle["df"]
+    rows = df[df["event_id"] == 4].drop(columns="time_to_tca")
+    result = predict_batch(b, rows, with_explanations=True)
+    assert result.predictions["row_id"].tolist() == rows["row_id"].tolist()
+    assert result.predictions["prediction_status"].eq("invalid").all()
+    assert result.predictions["triage_action"].eq("Human review - insufficient data").all()
+    assert result.predictions["risk_log10_pred"].isna().all()
+    assert result.explanations is None
+
+
+def test_mixed_dataset_predictions_match_separate_predictions(tiny_bundle):
+    b, df = tiny_bundle["bundle"], tiny_bundle["df"]
+    a = df[df["event_id"] == 4].copy()
+    other = a.copy()
+    other["dataset_id"] = "other"
+    other["row_id"] = "other:" + other["source_row_index"].astype(str)
+    other["max_risk_estimate"] += 0.5
+    rows = pd.concat([a, other], ignore_index=True).sample(frac=1, random_state=8).reset_index(drop=True)
+    actual = predict_frame(b, rows, with_explanations=False).predictions
+    expected = pd.concat([predict_frame(b, x, with_explanations=False).predictions for x in (a, other)])
+    assert actual["row_id"].tolist() == rows["row_id"].tolist()
+    pd.testing.assert_frame_equal(actual.set_index("row_id").sort_index(), expected.set_index("row_id").sort_index())

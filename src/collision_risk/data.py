@@ -17,6 +17,19 @@ from .contracts import PredictionStatus, QualityFlag
 ID_COLUMNS = ["dataset_id", "row_id", "source_row_index"]
 
 
+def event_group_codes(df: pd.DataFrame) -> np.ndarray:
+    """Row-aligned encounter codes, scoped by dataset when available.
+
+    Legacy single-dataset frames may omit dataset_id. Frames without event_id
+    treat each row as an independent observation.
+    """
+    if "event_id" not in df.columns:
+        return np.arange(len(df), dtype=np.int64)
+    columns = ["dataset_id", "event_id"] if "dataset_id" in df.columns else ["event_id"]
+    keys = pd.MultiIndex.from_frame(df[columns])
+    return pd.factorize(keys, sort=False)[0]
+
+
 # --------------------------------------------------------------------------- #
 # Loading and allowlist
 # --------------------------------------------------------------------------- #
@@ -159,9 +172,10 @@ def validate_rows(df: pd.DataFrame, cfg: dict, *, known_object_types: list[str] 
         add((~ot.isna() & ~ot.isin(list(known))).to_numpy(), QualityFlag.UNSEEN_OBJECT_TYPE)
 
     if "event_id" in df.columns and "time_to_tca" in df.columns:
-        tied = df.duplicated(["event_id", "time_to_tca"], keep=False).to_numpy() & (df["event_id"].to_numpy() >= 0)
+        dataset_cols = ["dataset_id"] if "dataset_id" in df.columns else []
+        tied = df.duplicated(dataset_cols + ["event_id", "time_to_tca"], keep=False).to_numpy() & (df["event_id"].to_numpy() >= 0)
         add(tied, QualityFlag.TIED_TIME_TO_TCA)
-        cols = [c for c in cfg["allowed_input_columns"] if c in df.columns]
+        cols = dataset_cols + [c for c in cfg["allowed_input_columns"] if c in df.columns]
         add(df.duplicated(cols, keep="first").to_numpy(), QualityFlag.DUPLICATE_ROW)
 
     flags = [list(dict.fromkeys(fl)) for fl in flags]

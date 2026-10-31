@@ -18,7 +18,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .data import assert_no_forbidden_columns
+from .data import assert_no_forbidden_columns, event_group_codes
 
 BASE_NUMERIC = [
     "time_to_tca", "miss_distance", "relative_speed", "relative_position_r", "relative_position_t",
@@ -108,25 +108,32 @@ def build_history_features(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
 
     Ordering key within an event is time_to_tca descending (larger = earlier). Rows with
     equal time_to_tca form one 'time group'; a row's history is the set of rows in strictly
-    earlier time groups, so tied messages never use one another. Rows with event_id < 0 are
-    treated as standalone."""
+    earlier time groups, so tied messages never use one another. Encounters are scoped by
+    (dataset_id, event_id). Rows with event_id < 0 or non-finite time_to_tca are standalone."""
     out = df.copy()
     n = len(out)
     key_cols = ["event_id", "time_to_tca", "log_miss_distance", "max_risk_estimate", "log_combined_sigma_r"]
+    if "dataset_id" in out.columns:
+        key_cols.insert(0, "dataset_id")
     w = out[key_cols].copy()
     w["_pos"] = np.arange(n)
     w["event_id"] = w["event_id"].fillna(-1).astype("int64")
-    # standalone rows get unique pseudo-events so no grouping happens
-    standalone = (w["event_id"] < 0) | w["time_to_tca"].isna()
-    w.loc[standalone, "event_id"] = -1 - np.arange(int(standalone.sum()))
+    w["_event"] = event_group_codes(w)
+    time_values = pd.to_numeric(w["time_to_tca"], errors="coerce").to_numpy(dtype=float)
+    invalid_time = ~np.isfinite(time_values)
+    # Invalid timestamps cannot contribute to another row's history. The internal
+    # placeholder only permits ranking a singleton; the original input stays invalid.
+    standalone = (w["event_id"] < 0) | invalid_time
+    w.loc[standalone, "_event"] = -1 - np.arange(int(standalone.sum()))
+    w["time_to_tca"] = np.where(invalid_time, 0.0, time_values)
     w["mre"] = pd.to_numeric(w["max_risk_estimate"], errors="coerce")
 
-    w = w.sort_values(["event_id", "time_to_tca"], ascending=[True, False], kind="stable")
+    w = w.sort_values(["_event", "time_to_tca"], ascending=[True, False], kind="stable")
     # dense rank of distinct time values within event: 1 = earliest message
-    w["tg"] = w.groupby("event_id")["time_to_tca"].rank(method="dense", ascending=False).astype("int64")
+    w["tg"] = w.groupby("_event")["time_to_tca"].rank(method="dense", ascending=False).astype("int64")
 
     # Per (event, time-group) aggregates, then exclusive cumulative over time groups.
-    g = w.groupby(["event_id", "tg"], sort=True).agg(
+    g = w.groupby(["_event", "tg"], sort=True).agg(
         cnt=("_pos", "size"),
         t=("time_to_tca", "first"),
         lm_min=("log_miss_distance", "min"),
@@ -136,7 +143,7 @@ def build_history_features(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
         mre_mean=("mre", "mean"),
         ls_mean=("log_combined_sigma_r", "mean"),
     ).reset_index()
-    ge = g.groupby("event_id", sort=False)
+    ge = g.groupby("_event", sort=False)
     # Inclusive cumulative stats per time group, then shift by one group -> strictly earlier
     g["c_cnt"] = ge["cnt"].cumsum()
     g["c_lm_min"] = ge["lm_min"].cummin()
@@ -151,13 +158,13 @@ def build_history_features(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     g["_stm"] = np.where(mre_ok, g["t"] * g["mre_mean"], 0.0)
     g["_stt"] = np.where(mre_ok, g["t"] ** 2, 0.0)
     for c in ("_n", "_st", "_sm", "_stm", "_stt"):
-        g["c" + c] = g.groupby("event_id", sort=False)[c].cumsum()
+        g["c" + c] = g.groupby("_event", sort=False)[c].cumsum()
     shift_cols = ["c_cnt", "c_lm_min", "c_mre_max", "c_mre_min", "lm_mean", "mre_mean", "ls_mean", "c_n", "c_st", "c_sm", "c_stm", "c_stt"]
-    prev = g.groupby("event_id", sort=False)[shift_cols].shift(1)
+    prev = g.groupby("_event", sort=False)[shift_cols].shift(1)
     prev.columns = ["p_" + c for c in shift_cols]
     g = pd.concat([g, prev], axis=1)
 
-    m = w.merge(g[["event_id", "tg", "first_t"] + list(prev.columns)], on=["event_id", "tg"], how="left")
+    m = w.merge(g[["_event", "tg", "first_t"] + list(prev.columns)], on=["_event", "tg"], how="left")
     m = m.sort_values("_pos", kind="stable")  # back to original order
     assert (m["_pos"].to_numpy() == np.arange(n)).all()
 

@@ -566,3 +566,31 @@ def test_find_illustrative_cases_empty_categories(cfg):
     )
     cases = find_illustrative_cases(df)
     assert cases == {"missed_critical": [], "false_alarm_critical": [], "uncertain": [], "invalid": []}
+
+
+
+def test_latest_cdm_scopes_reused_ids_by_dataset():
+    rows = pd.DataFrame({
+        "dataset_id": ["a", "b", "a", "b", "a", "b"],
+        "event_id": [1, 1, 1, 1, 1, 1],
+        "time_to_tca_days": [4.0, 3.0, 2.0, 1.0, 2.0, np.nan],
+        "tag": list("abcdef"),
+    }, index=[10, 20, 30, 40, 50, 60])
+    latest = latest_cdm_view(rows)
+    assert latest["tag"].tolist() == ["d", "e"]
+    assert latest.index.tolist() == [40, 50]
+    assert latest.columns.tolist() == rows.columns.tolist()
+
+
+def test_mixed_dataset_evaluation_matches_globally_unique_ids(cfg):
+    a = make_frame(n_events=20, seed=17).assign(dataset_id="a")
+    b = make_frame(n_events=20, seed=23).assign(dataset_id="b")
+    mixed = pd.concat([a, b], ignore_index=True)
+    remapped = mixed.copy()
+    remapped.loc[remapped["dataset_id"] == "b", "event_id"] += 20
+    remapped = remapped.drop(columns="dataset_id")
+    actual = evaluate_predictions(mixed, cfg, n_bootstrap=40, seed=5)
+    expected = evaluate_predictions(remapped, cfg, n_bootstrap=40, seed=5)
+    assert actual == expected
+    assert actual["counts"]["n_events"] == 40
+    assert actual["latest_cdm"]["n_rows"] == 40

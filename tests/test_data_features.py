@@ -121,3 +121,43 @@ def test_enforce_allowlist_keeps_only_allowed(synthetic_raw, cfg):
     kept, dropped = enforce_allowlist(synthetic_raw, cfg)
     assert set(kept.columns) <= set(cfg["allowed_input_columns"]) | {"risk"}
     assert "mahalanobis_distance" in dropped
+
+
+@pytest.mark.parametrize("bad_time", [np.nan, np.inf, -np.inf])
+def test_nonfinite_time_is_standalone_and_cannot_contaminate_history(synthetic_allowlisted, cfg, bad_time):
+    df, _ = synthetic_allowlisted
+    good = df[df["event_id"] == 5].copy()
+    invalid = good.iloc[[0]].copy()
+    invalid["time_to_tca"] = bad_time
+    invalid["max_risk_estimate"] = -0.1
+    mixed = pd.concat([invalid, good, invalid], ignore_index=True)
+    features = FE.build_features(mixed, cfg)
+    expected = FE.build_features(good, cfg)
+    pd.testing.assert_frame_equal(
+        features.iloc[1:-1][FE.HISTORY].reset_index(drop=True),
+        expected[FE.HISTORY].reset_index(drop=True),
+    )
+    for pos in (0, len(features) - 1):
+        assert features.iloc[pos]["n_cdms_so_far"] == 1
+        assert features.iloc[pos]["has_history"] == 0
+        assert features.iloc[pos]["days_since_first_cdm"] == 0
+        assert np.isnan(features.iloc[pos]["delta_max_risk"])
+        assert np.isnan(features.iloc[pos]["mre_trend"])
+    np.testing.assert_equal(features["time_to_tca"].to_numpy(), mixed["time_to_tca"].to_numpy())
+
+
+def test_history_and_quality_flags_are_isolated_by_dataset(synthetic_allowlisted, cfg):
+    df, _ = synthetic_allowlisted
+    a = df[df["event_id"] == 5].copy()
+    b = a.copy()
+    b["dataset_id"] = "other"
+    b["row_id"] = "other:" + b["source_row_index"].astype(str)
+    mixed = pd.concat([a, b], ignore_index=True).sample(frac=1, random_state=12).reset_index(drop=True)
+    actual = FE.build_features(mixed, cfg).set_index("row_id")[FE.HISTORY].sort_index()
+    expected = pd.concat([FE.build_features(a, cfg), FE.build_features(b, cfg)]).set_index("row_id")[FE.HISTORY].sort_index()
+    pd.testing.assert_frame_equal(actual, expected)
+    _, flags = validate_rows(mixed, cfg)
+    assert all("TIED_TIME_TO_TCA" not in f and "DUPLICATE_ROW" not in f for f in flags)
+    _, flags = validate_rows(pd.concat([a.iloc[[0]], a.iloc[[0]]], ignore_index=True), cfg)
+    assert all("TIED_TIME_TO_TCA" in f for f in flags)
+    assert "DUPLICATE_ROW" in flags[1]

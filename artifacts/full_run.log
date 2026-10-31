@@ -1,3 +1,15 @@
 [14:22:57] audit written: usable events 11942 (trivial 3050, real_forecast 8892), unusable 1212
 [14:22:57] split: dev 9553 / holdout 2389 events; 1212 unusable excluded
 [14:22:58] search: 12 configs x 5 folds
+[14:26:08] best params {'learning_rate': 0.04679255978730041, 'num_leaves': 12, 'min_child_samples': 190, 'feature_fraction': 0.9498034588173512, 'lambda_l2': 1.0} -> {'critical_recall': 0.8728813559322034, 'critical_precision': 0.7370304114490162, 'critical_f2': 0.8418471597874949, 'macro_f1': 0.8515030912165972}
+[14:26:11] training rows: snapshots (OOF critical F2 snapshots=0.842, latest=0.814)
+[14:26:27] lgbm_multiclass: OOF real_forecast {'critical_recall': 0.8792372881355932, 'critical_precision': 0.7332155477031802, 'critical_f2': 0.845558272208639} thresholds {'t_crit': 0.29, 't_elev': 0.3, 't_watch': 0.03569473440905395, 't_clear': 0.998986754133926} (15.8s)
+[14:27:04] lgbm_ordinal: OOF real_forecast {'critical_recall': 0.9046610169491526, 'critical_precision': 0.6777777777777778, 'critical_f2': 0.8478951548848292} thresholds {'t_crit': 0.2, 't_elev': 0.3, 't_watch': 0.02976306754188084, 't_clear': 0.9994625934229522} (36.7s)
+[14:27:11] logistic: OOF real_forecast {'critical_recall': 0.8940677966101694, 'critical_precision': 0.7021630615640599, 'critical_f2': 0.8477300120530333} thresholds {'t_crit': 0.3, 't_elev': 0.32, 't_watch': 0.030782761653474055, 't_clear': 0.974143628889336} (6.9s)
+[14:27:18] primary: lgbm_ordinal
+[14:28:20] ablation use_past_risk_off: holdout real_forecast critical recall 0.8898305084745762
+[14:28:41] ablation latest_only_training: holdout real_forecast critical recall 0.847457627118644
+[14:29:18] ablation no_history_features: holdout real_forecast critical recall 0.8813559322033898
+[14:29:56] mission-held-out CV done
+[14:29:56] evaluation written (419.3s)
+[14:30:07] exported 2167 event forecasts / 24484 snapshots to C:\Users\chayd\OneDrive\Desktop\helloworld\collision-risk-triage\artifacts in 9.70s

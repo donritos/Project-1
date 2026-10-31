@@ -84,12 +84,12 @@
   "split": {
     "seed": 42,
     "holdout": 0.2,
-    "cv_folds": 3
+    "cv_folds": 5
   },
   "model": {
     "training_rows": "auto",
     "class_weight_cap": 10.0,
-    "n_search": 2,
+    "n_search": 12,
     "learning_rate": [
       0.02,
       0.06
@@ -111,8 +111,8 @@
       1.0,
       10.0
     ],
-    "max_rounds": 300,
-    "early_stopping_rounds": 30,
+    "max_rounds": 3000,
+    "early_stopping_rounds": 100,
     "target_floor": -30.0,
     "num_threads": 0
   },

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-31T06:21:33.652401+00:00",
+  "generated_at": "2026-10-31T06:30:07.394844+00:00",
   "package_version": "0.1.0",
   "python": "3.11.18",
   "lightgbm": "4.7.0",
@@ -7,8 +7,8 @@
   "numpy": "2.4.6",
   "schema_version": "2.0.0",
   "task": "final-tier forecast",
-  "model_version": "lgbm_multiclass-20261031T062033Z",
-  "model_kind": "multiclass",
+  "model_version": "lgbm_ordinal-20261031T062654Z",
+  "model_kind": "ordinal",
   "feature_version": "features-v2-final-tier",
   "policy_version": "policy-v2-event",
   "feature_set": "final_tier",
@@ -17,8 +17,8 @@
   "thresholds": {
     "t_crit": 0.2,
     "t_elev": 0.3,
-    "t_watch": 0.03660673261890372,
-    "t_clear": 0.9989702722681502
+    "t_watch": 0.02976306754188084,
+    "t_clear": 0.9994625934229522
   },
   "split_hash": "d18e932157a7c887",
   "units": {
@@ -132,21 +132,21 @@
     "n_rows_below_horizon_dropped": 0,
     "n_events_input": 2167,
     "n_events_with_snapshot": 2167,
-    "t_features": 0.284,
-    "t_model": 0.289,
-    "t_explanations": 5.264,
-    "t_total": 6.163
+    "t_features": 0.676,
+    "t_model": 0.764,
+    "t_explanations": 7.494,
+    "t_total": 9.704
   },
   "n_events": 2167,
   "n_snapshots": 24484,
   "predicted_class_distribution": {
-    "Safe": 1426,
-    "Elevated": 501,
+    "Safe": 1438,
+    "Elevated": 489,
     "Critical": 240
   },
   "predicted_class_share": {
-    "Safe": 0.6581,
-    "Elevated": 0.2312,
+    "Safe": 0.6636,
+    "Elevated": 0.2257,
     "Critical": 0.1108
   },
   "current_tier_distribution": {
@@ -155,33 +155,33 @@
     "Critical": 186
   },
   "triage_counts": {
-    "Human review": 1086,
-    "Monitor": 347,
-    "Auto-clear candidate": 321,
+    "Human review": 1074,
+    "Auto-clear candidate": 352,
+    "Monitor": 333,
     "Maneuver planning review": 240,
-    "Escalation watch": 173
+    "Escalation watch": 168
   },
   "status_counts": {
     "valid": 2002,
     "warning": 165
   },
   "note": "Test predictions are demo output only; no metrics are computed on test_data (no final outcomes). The Kelvins test set was deliberately enriched with high-risk events, so the predicted class mix may differ from train.",
-  "batch_inference_seconds": 6.163,
+  "batch_inference_seconds": 9.704,
   "timing": {
     "n_input_rows": 24484,
     "n_rows_below_horizon_dropped": 0,
     "n_events_input": 2167,
     "n_events_with_snapshot": 2167,
-    "t_features": 0.284,
-    "t_model": 0.289,
-    "t_explanations": 5.264,
-    "t_total": 6.163
+    "t_features": 0.676,
+    "t_model": 0.764,
+    "t_explanations": 7.494,
+    "t_total": 9.704
   },
   "artifacts": {
-    "event_forecasts.parquet": "8901f23c3eab9cd258304d8c66a326f1205a6a9170a5de05d58654463f95acbe",
-    "snapshot_forecasts.parquet": "276ba8bb7d10ec7925bb19090b27c50e85ad213f26a5d2b15c05a7134de89ff7",
-    "explanations.parquet": "ef6a5db7969a24ab9b0db0dca0be414169c91bb5b082026b0892ff0497893b0b",
-    "submission.csv": "78c361837eb0a024895bc26f61246b4a6dea74c0317a1e4d239bb7e088a38c0b"
+    "event_forecasts.parquet": "690aa5727f9a8b8d0e7b2a9a33e0f5ec71bf241d466c1ae9a1a8710efaecd8fd",
+    "snapshot_forecasts.parquet": "37a60e8fc091a34d922498f232902ddd724c5eec094bd3da3c8ffb4b4457c5d5",
+    "explanations.parquet": "ba5a312d678de462e05d152d8b8b1470e78423f9f85ca424c0c5dd04f5f4be85",
+    "submission.csv": "c9141d9408895189cc943f3b364d099582f9907b4171e872ff500a267fd486cc"
   },
   "config_path": "C:\\Users\\chayd\\OneDrive\\Desktop\\helloworld\\collision-risk-triage\\configs\\default.yaml"
 }

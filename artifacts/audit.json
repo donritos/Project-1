@@ -1,7 +1,7 @@
 {
   "files": {
     "train": {
-      "path": "C:\\Users\\chayd\\OneDrive\\Desktop\\helloworld\\collision-risk-triage\\data\\raw\\train_data.csv",
+      "path": "/Users/tiredsnorlax/school/hackathon/Project-1/data/raw/train_data.csv",
       "sha256": "ba47ce80580d5d6ff523ddc1d724901dbdfb3a5afdc5e755f0ca2bcefe6e4eb6",
       "n_rows": 162634,
       "n_source_columns": 103,
@@ -100,7 +100,7 @@
       "has_target": true
     },
     "test": {
-      "path": "C:\\Users\\chayd\\OneDrive\\Desktop\\helloworld\\collision-risk-triage\\data\\raw\\test_data.csv",
+      "path": "/Users/tiredsnorlax/school/hackathon/Project-1/data/raw/test_data.csv",
       "sha256": "fc4110e979e7d569cb8aa819d450d29311e799115b2fe5b519b8a18eafa37323",
       "n_rows": 24484,
       "n_source_columns": 103,
@@ -529,7 +529,7 @@
       "inferred_encoding": "log10",
       "configured_encoding": "log10",
       "pearson_corr_with_risk": 0.22378610317825573,
-      "pearson_corr_with_risk_non_floor": 0.19140401282079028,
+      "pearson_corr_with_risk_non_floor": 0.19140401282079025,
       "n_rows_risk_exceeds_mre": 564,
       "fraction_rows_risk_exceeds_mre": 0.0034679095392107433,
       "is_strict_upper_bound": false
@@ -863,7 +863,7 @@
       "max": -1.263444152837364,
       "inferred_encoding": "log10",
       "configured_encoding": "log10",
-      "pearson_corr_with_risk": 0.3506727691352997,
+      "pearson_corr_with_risk": 0.35067276913529954,
       "pearson_corr_with_risk_non_floor": 0.3016968437958241,
       "n_rows_risk_exceeds_mre": 101,
       "fraction_rows_risk_exceeds_mre": 0.004125142950498284,
@@ -916,11 +916,13 @@
     "labels_match_recomputed": true
   },
   "label_audit": {
-    "workbook_path": "C:\\Users\\chayd\\OneDrive\\Desktop\\helloworld\\collision-risk-triage\\data\\raw\\challenge1_event_labels.xlsx",
+    "workbook_path": "/Users/tiredsnorlax/school/hackathon/Project-1/data/raw/challenge1_event_labels.xlsx",
     "workbook_present": false,
     "labels_source": "derived_from_train_data",
     "labels_match_recomputed": true,
     "n_tier_mismatches": 0,
+    "n_usable_flag_mismatches": 0,
+    "note": "workbook absent: labels recomputed from train_data.csv; no workbook comparison was possible",
     "n_events_total": 13154,
     "n_usable": 11942,
     "n_unusable": 1212,

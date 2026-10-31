@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-10-31T06:30:07.394844+00:00",
+  "generated_at": "2026-10-31T08:44:14.261951+00:00",
   "package_version": "0.1.0",
-  "python": "3.11.18",
+  "python": "3.11.15",
   "lightgbm": "4.7.0",
   "pandas": "3.1.0",
   "numpy": "2.4.6",
   "schema_version": "2.0.0",
   "task": "final-tier forecast",
-  "model_version": "lgbm_ordinal-20261031T062654Z",
+  "model_version": "lgbm_ordinal-20261031T084334Z",
   "model_kind": "ordinal",
   "feature_version": "features-v2-final-tier",
   "policy_version": "policy-v2-event",
@@ -15,12 +15,14 @@
   "use_past_risk": true,
   "horizon_min_days": 2.0,
   "thresholds": {
-    "t_crit": 0.2,
+    "t_crit": 0.24,
     "t_elev": 0.3,
-    "t_watch": 0.02976306754188084,
-    "t_clear": 0.9994625934229522
+    "t_watch": 0.027596627078912576,
+    "t_clear": 0.9994272636625692
   },
   "split_hash": "d18e932157a7c887",
+  "bundle_path": "/Users/tiredsnorlax/school/hackathon/Project-1/artifacts/model",
+  "trained_at": "20261031T084334Z",
   "units": {
     "miss_distance": "m",
     "relative_position": "m",
@@ -31,7 +33,7 @@
   },
   "input": {
     "dataset_id": "kelvins_test",
-    "path": "C:\\Users\\chayd\\OneDrive\\Desktop\\helloworld\\collision-risk-triage\\data\\raw\\test_data.csv",
+    "path": "/Users/tiredsnorlax/school/hackathon/Project-1/data/raw/test_data.csv",
     "sha256": "fc4110e979e7d569cb8aa819d450d29311e799115b2fe5b519b8a18eafa37323",
     "n_rows": 24484,
     "n_source_columns": 103,
@@ -132,22 +134,22 @@
     "n_rows_below_horizon_dropped": 0,
     "n_events_input": 2167,
     "n_events_with_snapshot": 2167,
-    "t_features": 0.676,
-    "t_model": 0.764,
-    "t_explanations": 7.494,
-    "t_total": 9.704
+    "t_features": 0.089,
+    "t_model": 0.065,
+    "t_explanations": 0.979,
+    "t_total": 1.252
   },
   "n_events": 2167,
   "n_snapshots": 24484,
   "predicted_class_distribution": {
-    "Safe": 1438,
-    "Elevated": 489,
-    "Critical": 240
+    "Safe": 1439,
+    "Elevated": 510,
+    "Critical": 218
   },
   "predicted_class_share": {
-    "Safe": 0.6636,
-    "Elevated": 0.2257,
-    "Critical": 0.1108
+    "Safe": 0.6641,
+    "Elevated": 0.2353,
+    "Critical": 0.1006
   },
   "current_tier_distribution": {
     "Safe": 1481,
@@ -155,33 +157,34 @@
     "Critical": 186
   },
   "triage_counts": {
-    "Human review": 1074,
-    "Auto-clear candidate": 352,
-    "Monitor": 333,
-    "Maneuver planning review": 240,
-    "Escalation watch": 168
+    "Low-priority monitor": 983,
+    "Auto-clear candidate": 384,
+    "Monitor": 352,
+    "Maneuver planning review": 218,
+    "Escalation watch": 171,
+    "Human review": 59
   },
   "status_counts": {
     "valid": 2002,
     "warning": 165
   },
   "note": "Test predictions are demo output only; no metrics are computed on test_data (no final outcomes). The Kelvins test set was deliberately enriched with high-risk events, so the predicted class mix may differ from train.",
-  "batch_inference_seconds": 9.704,
+  "batch_inference_seconds": 1.252,
   "timing": {
     "n_input_rows": 24484,
     "n_rows_below_horizon_dropped": 0,
     "n_events_input": 2167,
     "n_events_with_snapshot": 2167,
-    "t_features": 0.676,
-    "t_model": 0.764,
-    "t_explanations": 7.494,
-    "t_total": 9.704
+    "t_features": 0.089,
+    "t_model": 0.065,
+    "t_explanations": 0.979,
+    "t_total": 1.252
   },
   "artifacts": {
-    "event_forecasts.parquet": "690aa5727f9a8b8d0e7b2a9a33e0f5ec71bf241d466c1ae9a1a8710efaecd8fd",
-    "snapshot_forecasts.parquet": "37a60e8fc091a34d922498f232902ddd724c5eec094bd3da3c8ffb4b4457c5d5",
-    "explanations.parquet": "ba5a312d678de462e05d152d8b8b1470e78423f9f85ca424c0c5dd04f5f4be85",
-    "submission.csv": "c9141d9408895189cc943f3b364d099582f9907b4171e872ff500a267fd486cc"
+    "event_forecasts.parquet": "bc86ee029de0b70dbdf89dfff964286571e315721b51690f404769b964544d7a",
+    "snapshot_forecasts.parquet": "744e512f9f99195700a96f364676cd1ecd5fbdb3fda0cc684f1ce227d7333515",
+    "explanations.parquet": "14f020298889725d7044825231e9709806db051eb3452fd9e613468470329954",
+    "submission.csv": "ae7680715677a3b5052ab1cac0f1bd5541ee643b0a91599a8481650acc2f06b3"
   },
-  "config_path": "C:\\Users\\chayd\\OneDrive\\Desktop\\helloworld\\collision-risk-triage\\configs\\default.yaml"
+  "config_path": "/Users/tiredsnorlax/school/hackathon/Project-1/configs/default.yaml"
 }

@@ -1,8 +1,8 @@
 {
   "schema_version": "dashboard-1.0",
-  "built_at": "2026-10-31T07:30:27.949768+00:00",
+  "built_at": "2026-10-31T08:44:44.038670+00:00",
   "model": {
-    "model_version": "lgbm_ordinal-20261031T062654Z",
+    "model_version": "lgbm_ordinal-20261031T084334Z",
     "feature_version": "features-v2-final-tier",
     "policy_version": "policy-v2-event",
     "kind": "ordinal",
@@ -10,16 +10,16 @@
     "split_hash": "d18e932157a7c887",
     "use_past_risk": true,
     "thresholds": {
-      "t_crit": 0.2,
+      "t_crit": 0.24,
       "t_elev": 0.3,
-      "t_watch": 0.02976306754188084,
-      "t_clear": 0.9994625934229522
+      "t_watch": 0.027596627078912576,
+      "t_clear": 0.9994272636625692
     },
     "bundle_sha256": {
-      "bundle.json": "f6167dfa619f5000bb19064278fa4f787c2fc044e1dadc8334e2efcdbcb9f414",
+      "bundle.json": "6b2676f953067f78b439e76af2623fce9490bd7d0eba342d4c1018b5c009af8c",
       "config_snapshot.json": "2ad701a3a2311cf6d9d976704faef50139cc8def3118770c43d3d1da08f731ee",
-      "model_ge_elevated.txt": "3fa24f43c46a146db1376f68d462df79daec364791090acd18009f5274294187",
-      "model_critical.txt": "e6bce9f4f72107d1971793d591684a5ea39a52eb5b7c2b08e4e6f18305b7ed21"
+      "model_ge_elevated.txt": "da9b82bb4ca255633117f4ac7a6cb3aafa3680f5fa22e5b912703e549cf31f9f",
+      "model_critical.txt": "f091a7ac19888a6dfffea0b39d8f55be82b74d4859ac4fc009b63777f6ae6f95"
     }
   },
   "eligibility": {
@@ -72,9 +72,7 @@
         "tier_agreement": 1.0
       },
       "workbook_check": {
-        "present": true,
-        "tier_mismatches": 0,
-        "usable_mismatches": 0
+        "present": false
       },
       "note": "20 % event split never used for training, tuning or calibration. Outcomes are evaluation-only."
     },

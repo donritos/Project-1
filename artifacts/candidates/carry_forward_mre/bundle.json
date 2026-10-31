@@ -1,7 +1,7 @@
 {
   "name": "carry_forward_mre",
   "kind": "carry_forward_mre",
-  "model_version": "carry_forward_mre-20261031T062713Z",
+  "model_version": "carry_forward_mre-20261031T084337Z",
   "feature_version": "features-v2-final-tier",
   "policy_version": "policy-v2-event",
   "feature_set": "final_tier",
@@ -80,7 +80,7 @@
   "split_hash": "d18e932157a7c887",
   "horizon_min_days": 2.0,
   "use_past_risk": true,
-  "trained_at": "20261031T062713Z",
+  "trained_at": "20261031T084337Z",
   "feature_ranges": {},
   "thresholds": {
     "t_crit": 0.5,

@@ -227,7 +227,7 @@ def audit(train: pd.DataFrame, test: pd.DataFrame | None, cfg: dict, train_meta:
     tgt = cfg["target_column"]
     f = cfg["features"]
     floor = cfg["model"]["target_floor"]
-    horizon = cfg["split"]["test_horizon_min_days"]
+    horizon = float(cfg["horizon"]["min_days"])
     num_cols = [c for c in cfg["allowed_input_columns"] if c not in ("event_id", "c_object_type")]
     rep: dict[str, Any] = {"files": {"train": train_meta, "test": test_meta}, "units_assumed": cfg["units"]}
 

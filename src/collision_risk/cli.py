@@ -9,18 +9,18 @@ from .config import load_config
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="collision-risk", description="Satellite conjunction triage pipeline")
+    p = argparse.ArgumentParser(prog="collision-risk", description="Satellite conjunction final-tier forecasting pipeline")
     p.add_argument("--config", default=None, help="Path to YAML config (default configs/default.yaml)")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("audit", help="Audit raw files, cache allowlisted parquet, write artifacts/audit.json")
+    sub.add_parser("audit", help="Audit raw files and event labels, cache allowlisted parquet, write artifacts/audit.json")
     t = sub.add_parser("train", help="80/20 event split, grouped OOF search, candidates, calibration, thresholds, holdout evaluation")
-    t.add_argument("--quick", action="store_true", help="Small search/rounds for smoke testing")
+    t.add_argument("--quick", action="store_true", help="Small search/rounds for smoke testing (< 2 minutes)")
     pr = sub.add_parser("predict", help="Forecast final tiers for a CSV of CDMs and export event/snapshot forecasts + submission.csv")
     pr.add_argument("--input", default=None, help="CSV path (default: configured test file)")
     pr.add_argument("--dataset-id", default=None)
     pr.add_argument("--out-dir", default=None)
     pr.add_argument("--bundle", default=None, help="Model bundle directory (default artifacts/model)")
-    sub.add_parser("evaluate", help="Print the headline comparison table from artifacts/evaluation.json")
+    sub.add_parser("evaluate", help="Print the headline comparison tables from artifacts/evaluation.json")
     ra = sub.add_parser("run-all", help="audit -> train -> predict")
     ra.add_argument("--quick", action="store_true")
     a = p.parse_args(argv)
@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     from . import pipeline
     if a.cmd == "audit":
         rep = pipeline.stage_audit(cfg)
-        print(json.dumps(rep["checks"], indent=2))
+        print(json.dumps({"checks": rep["checks"], "label_audit": rep["label_audit"], "horizon": rep["horizon"]}, indent=2, default=str))
     elif a.cmd == "train":
         ev = pipeline.stage_train(cfg, quick=a.quick)
         _print_table(ev)
@@ -48,11 +48,11 @@ def _print_table(ev: dict) -> None:
     import pandas as pd
     pd.set_option("display.width", 220)
     print(f"primary model: {ev['primary_model']}  ({ev['model_version']})  thresholds={ev.get('decision_thresholds')}")
-    print("
-Holdout, real_forecast events (final CDM < 2 days; the answer is not visible in the input):")
+    print()
+    print("Holdout, real_forecast events (final CDM < 2 days; the answer is not visible in the input):")
     print(pd.DataFrame(ev["comparison_real_forecast"]).to_string(index=False))
-    print("
-Holdout, all usable events:")
+    print()
+    print("Holdout, all usable events:")
     print(pd.DataFrame(ev["comparison_all_usable"]).to_string(index=False))
 
 

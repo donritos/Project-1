@@ -78,7 +78,7 @@ def test_save_reload_preserves_forecasts_and_horizon_is_enforced(run, synthetic_
 def test_invalid_rows_get_insufficient_data(run, synthetic_raw):
     from pathlib import Path
     b = load_bundle(Path(run["cfg"]["paths"]["artifacts_dir"]) / "model")
-    rows = synthetic_raw[synthetic_raw["event_id"] == 0].copy()
+    rows = synthetic_raw[synthetic_raw["event_id"] == 10].copy()  # event 0 already carries injected invalid rows
     rows.loc[rows["time_to_tca"].idxmax(), "miss_distance"] = np.nan
     out = predict_batch(b, rows, dataset_id="bad")
     inv = out.snapshots[out.snapshots["prediction_status"] == "invalid"]

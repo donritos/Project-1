@@ -249,3 +249,136 @@ def out_of_range_mask(X: pd.DataFrame, ranges: dict[str, dict[str, float]], colu
 def describe_feature_set(feature_set: str) -> dict[str, Any]:
     return {"feature_set": feature_set, "columns": feature_columns(feature_set), "categorical": CATEGORICAL,
             "history_representation_for_standalone": {"n_cdms_so_far": 1, "days_since_first_cdm": 0.0, "deltas": "NaN", "mre_trend": "NaN", "has_history": 0}}
+
+# --------------------------------------------------------------------------- #
+# Final-tier task: event snapshots (one row per CDM at >= horizon days)
+# --------------------------------------------------------------------------- #
+EVENT_SO_FAR_BASE = [
+    "n_cdms_2d", "span_days", "d_log_miss_first", "d_mre_first", "d_log_sigma_first",
+    "slope_log_miss", "slope_mre", "slope_log_sigma", "volatility_mre", "n_up_mre", "n_down_mre",
+    "tier_now_from_mre", "margin_to_critical_mre", "margin_to_elevated_mre", "log_miss_minus_1km", "log_miss_minus_5km",
+]
+EVENT_SO_FAR_RISK = [
+    "risk", "d_risk_first", "slope_risk", "volatility_risk", "n_up_risk", "n_down_risk",
+    "tier_now_from_risk", "margin_to_critical", "margin_to_elevated", "latest_risk_is_floor",
+]
+FEATURE_SETS["final_tier"] = BASE_NUMERIC + CATEGORICAL + PHYSICS + HISTORY + EVENT_SO_FAR_BASE + EVENT_SO_FAR_RISK
+FEATURE_SETS["final_tier_no_past_risk"] = BASE_NUMERIC + CATEGORICAL + PHYSICS + HISTORY + EVENT_SO_FAR_BASE
+FEATURE_SETS["final_tier_no_history"] = BASE_NUMERIC + CATEGORICAL + PHYSICS + ["risk", "tier_now_from_risk", "margin_to_critical", "margin_to_elevated",
+                                                                               "latest_risk_is_floor", "tier_now_from_mre", "margin_to_critical_mre",
+                                                                               "margin_to_elevated_mre", "log_miss_minus_1km", "log_miss_minus_5km", "n_cdms_2d"]
+
+
+def final_tier_feature_set(cfg: dict, *, history: bool = True) -> str:
+    if not history:
+        return "final_tier_no_history"
+    return "final_tier" if cfg["features"].get("use_past_risk", True) else "final_tier_no_past_risk"
+
+
+def _cum_slope_and_std(ev: np.ndarray, t: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Inclusive cumulative least-squares slope of v against t and cumulative std of v within
+    consecutive-sorted event blocks `ev`. NaN v values are skipped. Vectorised with segment cumsums."""
+    ok = np.isfinite(v) & np.isfinite(t)
+    n = np.where(ok, 1.0, 0.0)
+    st = np.where(ok, t, 0.0)
+    sv = np.where(ok, v, 0.0)
+    stv = np.where(ok, t * v, 0.0)
+    stt = np.where(ok, t * t, 0.0)
+    svv = np.where(ok, v * v, 0.0)
+    # segment cumulative sums: global cumsum minus the value just before each segment start
+    def seg_cumsum(x: np.ndarray) -> np.ndarray:
+        c = np.cumsum(x)
+        starts = np.r_[True, ev[1:] != ev[:-1]]
+        offset = np.maximum.accumulate(np.where(starts, np.arange(len(x)), 0))
+        base = (c - x)[offset]
+        return c - base
+    cn, cst, csv_, cstv, cstt, csvv = (seg_cumsum(a) for a in (n, st, sv, stv, stt, svv))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        denom = cn * cstt - cst ** 2
+        slope = (cn * cstv - cst * csv_) / denom
+        var = csvv / cn - (csv_ / cn) ** 2
+    slope = np.where((cn >= 2) & (np.abs(denom) > 1e-12) & np.isfinite(slope), slope, np.nan)
+    std = np.where(cn >= 2, np.sqrt(np.maximum(var, 0.0)), np.nan)
+    return slope, std
+
+
+def _cum_moves(ev: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Inclusive cumulative counts of up-moves and down-moves of v between consecutive rows of an event."""
+    prev = np.r_[np.nan, v[:-1]]
+    same = np.r_[False, ev[1:] == ev[:-1]]
+    d = np.where(same & np.isfinite(v) & np.isfinite(prev), v - prev, 0.0)
+    up = (d > 0).astype(float)
+    down = (d < 0).astype(float)
+    starts = np.r_[True, ev[1:] != ev[:-1]]
+    idx = np.maximum.accumulate(np.where(starts, np.arange(len(v)), 0))
+    cu = np.cumsum(up); cd = np.cumsum(down)
+    return cu - (cu - up)[idx], cd - (cd - down)[idx]
+
+
+def build_event_snapshots(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """One row per snapshot CDM (the input must already be horizon-filtered and allowlisted; `risk` may
+    be present). Adds the per-CDM features (physics + causal history) and the causal event-so-far
+    features listed in EVENT_SO_FAR_*, plus `is_latest_snapshot`. Event-so-far features use snapshot
+    CDMs at the same or earlier time only. Original row order is preserved."""
+    from .policy import assign_risk_tier
+    th = cfg["thresholds"]
+    use_risk = bool(cfg["features"].get("use_past_risk", True)) and "risk" in df.columns
+    out = build_features(df, cfg, feature_set="history")
+    n = len(out)
+    if n == 0:
+        for c in EVENT_SO_FAR_BASE + EVENT_SO_FAR_RISK + ["is_latest_snapshot"]:
+            out[c] = np.nan
+        return out
+
+    ev = event_group_codes(out)
+    t = pd.to_numeric(out["time_to_tca"], errors="coerce").to_numpy(dtype=float)
+    order = np.lexsort((np.arange(n), -t, ev))  # event, time desc (earliest first), original order for ties
+    ev_s, t_s = ev[order], t[order]
+    lm = out["log_miss_distance"].to_numpy(dtype=float)[order]
+    mre = pd.to_numeric(out["max_risk_estimate"], errors="coerce").to_numpy(dtype=float)[order]
+    ls = out["log_combined_sigma_r"].to_numpy(dtype=float)[order]
+    risk = pd.to_numeric(out["risk"], errors="coerce").to_numpy(dtype=float)[order] if "risk" in out.columns else np.full(n, np.nan)
+
+    starts = np.r_[True, ev_s[1:] != ev_s[:-1]]
+    first_idx = np.maximum.accumulate(np.where(starts, np.arange(n), 0))
+    pos_in_event = np.arange(n) - first_idx
+    feats: dict[str, np.ndarray] = {}
+    feats["n_cdms_2d"] = (pos_in_event + 1).astype(float)
+    feats["span_days"] = t_s[first_idx] - t_s
+    feats["d_log_miss_first"] = lm - lm[first_idx]
+    feats["d_mre_first"] = mre - mre[first_idx]
+    feats["d_log_sigma_first"] = ls - ls[first_idx]
+    feats["slope_log_miss"], _ = _cum_slope_and_std(ev_s, t_s, lm)
+    feats["slope_mre"], feats["volatility_mre"] = _cum_slope_and_std(ev_s, t_s, mre)
+    feats["slope_log_sigma"], _ = _cum_slope_and_std(ev_s, t_s, ls)
+    feats["n_up_mre"], feats["n_down_mre"] = _cum_moves(ev_s, mre)
+    miss = pd.to_numeric(out["miss_distance"], errors="coerce").to_numpy(dtype=float)[order]
+    tier_mre, _ = assign_risk_tier(mre, miss, th)
+    sev = {"Safe": 0.0, "Elevated": 1.0, "Critical": 2.0}
+    feats["tier_now_from_mre"] = np.array([sev.get(x, np.nan) for x in tier_mre], dtype=float)
+    feats["margin_to_critical_mre"] = mre - th["critical_risk"]
+    feats["margin_to_elevated_mre"] = mre - th["elevated_risk"]
+    feats["log_miss_minus_1km"] = lm - np.log10(th["critical_distance_m"])
+    feats["log_miss_minus_5km"] = lm - np.log10(th["elevated_distance_max_m"])
+    if use_risk:
+        feats["risk"] = risk
+        feats["d_risk_first"] = risk - risk[first_idx]
+        feats["slope_risk"], feats["volatility_risk"] = _cum_slope_and_std(ev_s, t_s, risk)
+        feats["n_up_risk"], feats["n_down_risk"] = _cum_moves(ev_s, risk)
+        tier_r, _ = assign_risk_tier(risk, miss, th)
+        feats["tier_now_from_risk"] = np.array([sev.get(x, np.nan) for x in tier_r], dtype=float)
+        feats["margin_to_critical"] = risk - th["critical_risk"]
+        feats["margin_to_elevated"] = risk - th["elevated_risk"]
+        feats["latest_risk_is_floor"] = np.where(np.isfinite(risk), (risk <= cfg["model"]["target_floor"] + 1e-9).astype(float), np.nan)
+    else:
+        for c in EVENT_SO_FAR_RISK:
+            feats[c] = np.full(n, np.nan)
+    # latest snapshot = last row of each event block in (time desc, original order) sort
+    ends = np.r_[ev_s[1:] != ev_s[:-1], True]
+    feats["is_latest_snapshot"] = ends
+
+    inv = np.empty(n, dtype=np.int64); inv[order] = np.arange(n)
+    for c, v in feats.items():
+        out[c] = v[inv]
+    out["is_latest_snapshot"] = out["is_latest_snapshot"].astype(bool)
+    return out

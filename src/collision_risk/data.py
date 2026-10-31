@@ -12,7 +12,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
-from .contracts import PredictionStatus, QualityFlag
+from .contracts import PredictionStatus, QualityFlag, RiskTier
 
 ID_COLUMNS = ["dataset_id", "row_id", "source_row_index"]
 
@@ -322,3 +322,101 @@ def audit(train: pd.DataFrame, test: pd.DataFrame | None, cfg: dict, train_meta:
         "test_horizon_restricted": rep.get("test_horizon", {}).get("test_rows_stop_at_or_after_horizon"),
     }
     return rep
+
+# --------------------------------------------------------------------------- #
+# Final-tier task: event labels and the 2-day horizon
+# --------------------------------------------------------------------------- #
+LABEL_COLUMNS = ["event_id", "mission_id", "cdm_count", "cdm_count_2d_or_more", "final_time_to_tca_days",
+                 "final_risk_log10_pc", "final_miss_distance_m", "final_tier", "usable_for_training"]
+
+
+def apply_horizon(df: pd.DataFrame, min_days: float) -> pd.DataFrame:
+    """Keep only CDMs with time_to_tca >= min_days. Must run BEFORE any feature engineering so
+    that history features can never see later CDMs. Rows with non-finite time_to_tca are dropped."""
+    t = pd.to_numeric(df["time_to_tca"], errors="coerce").to_numpy(dtype=float)
+    keep = np.isfinite(t) & (t >= float(min_days) - 1e-12)
+    return df.loc[keep].copy()
+
+
+def derive_event_labels(train_csv: str | Path, cfg: dict) -> pd.DataFrame:
+    """Recompute the labels workbook content from the raw training file: one row per event with the
+    tier of its LAST CDM (smallest time_to_tca). Used to verify the workbook, or as the label source
+    when the workbook is not available (recorded in the audit as labels_source='derived')."""
+    from .policy import tier_from_true_risk
+    cols = ["event_id", "mission_id", "time_to_tca", "risk", "miss_distance"]
+    raw = pd.read_csv(train_csv, usecols=cols)
+    raw = raw[np.isfinite(pd.to_numeric(raw["time_to_tca"], errors="coerce"))]
+    last = raw.sort_values(["event_id", "time_to_tca"], kind="stable").groupby("event_id").head(1).set_index("event_id")
+    g = raw.groupby("event_id")
+    out = pd.DataFrame({
+        "event_id": last.index.to_numpy(),
+        "mission_id": last["mission_id"].to_numpy(),
+        "cdm_count": g.size().reindex(last.index).to_numpy(),
+        "cdm_count_2d_or_more": g["time_to_tca"].apply(lambda s: int((s >= cfg["horizon"]["min_days"]).sum())).reindex(last.index).to_numpy(),
+        "final_time_to_tca_days": last["time_to_tca"].to_numpy(),
+        "final_risk_log10_pc": last["risk"].to_numpy(),
+        "final_miss_distance_m": last["miss_distance"].to_numpy(),
+    })
+    out["final_tier"] = tier_from_true_risk(out["final_risk_log10_pc"].to_numpy(float), out["final_miss_distance_m"].to_numpy(float), cfg["thresholds"])
+    out["usable_for_training"] = out["cdm_count_2d_or_more"] > 0
+    return out.sort_values("event_id").reset_index(drop=True)
+
+
+def load_event_labels(cfg: dict) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Load the official workbook sheet `train_event_labels` (header on row 3) if present, validate it,
+    and cross-check it against labels recomputed from train_data.csv. Falls back to the recomputed labels
+    when the workbook is missing. Returns (labels, info). Raises if the workbook disagrees with the data."""
+    from .config import PROJECT_ROOT
+    xlsx = Path(cfg["paths"]["event_labels"])
+    xlsx = xlsx if xlsx.is_absolute() else PROJECT_ROOT / xlsx
+    train_csv = Path(cfg["paths"]["raw_train"])
+    train_csv = train_csv if train_csv.is_absolute() else PROJECT_ROOT / train_csv
+    derived = derive_event_labels(train_csv, cfg)
+    info: dict[str, Any] = {"workbook_path": str(xlsx), "workbook_present": xlsx.exists()}
+    if xlsx.exists():
+        lab = pd.read_excel(xlsx, sheet_name="train_event_labels", header=2)
+        lab.columns = [str(c).strip() for c in lab.columns]
+        missing = [c for c in LABEL_COLUMNS if c not in lab.columns]
+        if missing:
+            raise ValueError(f"labels workbook missing columns: {missing}")
+        lab = lab[LABEL_COLUMNS].copy()
+        lab["event_id"] = lab["event_id"].astype("int64")
+        lab["final_tier"] = lab["final_tier"].astype(str).str.strip().str.capitalize()
+        valid_tiers = {t.value for t in RiskTier}
+        bad = sorted(set(lab["final_tier"]) - valid_tiers)
+        if bad:
+            raise ValueError(f"unexpected final_tier values in workbook: {bad}")
+        u = lab["usable_for_training"]
+        lab["usable_for_training"] = u.astype(str).str.strip().str.lower().isin(["yes", "true", "1", "y"]) if u.dtype == object else u.astype(bool)
+        lab = lab.sort_values("event_id").reset_index(drop=True)
+        m = lab.merge(derived, on="event_id", how="outer", suffixes=("", "_recomputed"), indicator=True)
+        info["n_events_only_in_workbook"] = int((m["_merge"] == "left_only").sum())
+        info["n_events_only_in_data"] = int((m["_merge"] == "right_only").sum())
+        both = m[m["_merge"] == "both"]
+        mismatch = int((both["final_tier"] != both["final_tier_recomputed"]).sum())
+        info["n_tier_mismatches"] = mismatch
+        info["labels_match_recomputed"] = mismatch == 0 and info["n_events_only_in_workbook"] == 0 and info["n_events_only_in_data"] == 0
+        info["labels_source"] = "workbook"
+        if not info["labels_match_recomputed"]:
+            raise RuntimeError(f"Labels workbook disagrees with train_data.csv: {info}")
+        labels = lab
+    else:
+        labels = derived
+        info["labels_source"] = "derived_from_train_data"
+        info["labels_match_recomputed"] = True
+        info["n_tier_mismatches"] = 0
+    labels["is_trivial"] = labels["final_time_to_tca_days"] >= float(cfg["horizon"]["min_days"]) - 1e-12
+    labels.loc[~labels["usable_for_training"], "is_trivial"] = False
+    info.update({
+        "n_events_total": int(len(labels)),
+        "n_usable": int(labels["usable_for_training"].sum()),
+        "n_unusable": int((~labels["usable_for_training"]).sum()),
+        "n_trivial": int(labels.loc[labels["usable_for_training"], "is_trivial"].sum()),
+        "n_real_forecast": int((~labels.loc[labels["usable_for_training"], "is_trivial"]).sum()),
+        "class_counts_all": labels["final_tier"].value_counts().to_dict(),
+        "class_counts_usable": labels.loc[labels["usable_for_training"], "final_tier"].value_counts().to_dict(),
+        "class_counts_trivial": labels.loc[labels["usable_for_training"] & labels["is_trivial"], "final_tier"].value_counts().to_dict(),
+        "class_counts_real_forecast": labels.loc[labels["usable_for_training"] & ~labels["is_trivial"], "final_tier"].value_counts().to_dict(),
+        "n_missions": int(labels["mission_id"].nunique()),
+    })
+    return labels, info

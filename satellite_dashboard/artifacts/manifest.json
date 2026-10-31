@@ -1,0 +1,100 @@
+{
+  "schema_version": "dashboard-1.0",
+  "built_at": "2026-10-31T07:30:27.949768+00:00",
+  "model": {
+    "model_version": "lgbm_ordinal-20261031T062654Z",
+    "feature_version": "features-v2-final-tier",
+    "policy_version": "policy-v2-event",
+    "kind": "ordinal",
+    "model_schema_version": "2.0.0",
+    "split_hash": "d18e932157a7c887",
+    "use_past_risk": true,
+    "thresholds": {
+      "t_crit": 0.2,
+      "t_elev": 0.3,
+      "t_watch": 0.02976306754188084,
+      "t_clear": 0.9994625934229522
+    },
+    "bundle_sha256": {
+      "bundle.json": "f6167dfa619f5000bb19064278fa4f787c2fc044e1dadc8334e2efcdbcb9f414",
+      "config_snapshot.json": "2ad701a3a2311cf6d9d976704faef50139cc8def3118770c43d3d1da08f731ee",
+      "model_ge_elevated.txt": "3fa24f43c46a146db1376f68d462df79daec364791090acd18009f5274294187",
+      "model_critical.txt": "e6bce9f4f72107d1971793d591684a5ea39a52eb5b7c2b08e4e6f18305b7ed21"
+    }
+  },
+  "eligibility": {
+    "min_time_to_tca_days": 2.0,
+    "rule": "time_to_tca >= 2 days"
+  },
+  "tier_rules": {
+    "critical": "risk >= -4.0 OR miss_distance < 1000 m",
+    "elevated": "not Critical, and (-6.0 <= risk < -4.0 OR 1000 m <= miss_distance <= 5000 m)",
+    "safe": "risk < -6.0 AND miss_distance > 5000 m",
+    "floor": "risk = -30 is a placeholder for a probability too small to compute (Pc ~ 0)"
+  },
+  "split": {
+    "method": "80/20 split by event_id, stratified by final tier x trivial flag; holdout untouched until freeze",
+    "holdout_fraction": 0.2,
+    "split_hash": "d18e932157a7c887",
+    "n_unusable_excluded": 1212
+  },
+  "capabilities": {
+    "class_probabilities": true,
+    "class_probabilities_note": "Calibrated probability of each FINAL TIER. Not a collision probability.",
+    "feature_contributions": true,
+    "feature_contributions_note": "LightGBM contributions to the Critical-class score, in log-odds.",
+    "reason_codes": true,
+    "review_recommendation": true,
+    "snapshot_history": true,
+    "predicted_final_pc": false,
+    "predicted_final_miss_distance": false,
+    "uncertainty_intervals": false,
+    "prediction_sets": false,
+    "prediction_sets_note": "The model's 90 % prediction sets contain exactly one class for every held-out event in this run, so they add no information and are hidden.",
+    "single_cdm_inference": true,
+    "single_cdm_inference_note": "Supported, but the forecast then has no history (NO_HISTORY)."
+  },
+  "datasets": {
+    "heldout": {
+      "label": "Held-out training events",
+      "dataset_id": "kelvins_train",
+      "has_outcomes": true,
+      "n_events": 2389,
+      "n_snapshots": 22375,
+      "n_input_rows": 31811,
+      "n_rows_excluded_by_horizon": 9436,
+      "reference_check": {
+        "reference": "holdout_forecasts.parquet",
+        "checked": true,
+        "n_matched": 2389,
+        "n_reference": 2389,
+        "max_abs_diff_p_critical": 0.0,
+        "tier_agreement": 1.0
+      },
+      "workbook_check": {
+        "present": true,
+        "tier_mismatches": 0,
+        "usable_mismatches": 0
+      },
+      "note": "20 % event split never used for training, tuning or calibration. Outcomes are evaluation-only."
+    },
+    "test": {
+      "label": "Unlabelled test events",
+      "dataset_id": "kelvins_test",
+      "has_outcomes": false,
+      "n_events": 2167,
+      "n_snapshots": 24484,
+      "n_input_rows": 24484,
+      "n_rows_excluded_by_horizon": 0,
+      "reference_check": {
+        "reference": "event_forecasts.parquet",
+        "checked": true,
+        "n_matched": 2167,
+        "n_reference": 2167,
+        "max_abs_diff_p_critical": 0.0,
+        "tier_agreement": 1.0
+      },
+      "note": "No final outcomes are provided for test events; predictions are for demonstration only."
+    }
+  }
+}

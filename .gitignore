@@ -5,3 +5,4 @@ data/raw/*.csv
 data/processed/
 artifacts/**/*.parquet
 .pytest_cache/
+data/raw/*.xlsx

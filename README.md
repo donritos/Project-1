@@ -56,6 +56,23 @@ Regenerate the results page from the artifacts:
 uv run python scripts/make_results.py
 ```
 
+### Dashboard
+
+The analyst dashboard lives in [`satellite_dashboard/`](satellite_dashboard/README.md) and runs on
+the shipped bundle in `artifacts/model` (it carries its own copy of the bundle plus the held-out and
+test forecasts, so it works offline). From that folder:
+
+```bash
+cd satellite_dashboard
+uv sync                      # installs the app and the model package from ..
+uv run streamlit run app.py  # http://localhost:8501
+uv run pytest                # dashboard acceptance tests
+```
+
+After retraining (`collision-risk run-all`), refresh the dashboard's artifacts with
+`uv run python scripts/build_artifacts.py` followed by `uv run python scripts/validate_bundle.py`;
+the build fails if the dashboard's forecasts differ from the model's exported predictions.
+
 `predict` accepts any CSV of CDMs with the permitted columns, e.g.
 `uv run collision-risk predict --input my_cdms.csv --dataset-id ops_2026_11 --out-dir artifacts/ops`.
 The CSV and in-memory (`service.predict_batch`) paths share one normalisation routine: optional
@@ -259,10 +276,10 @@ with high-risk events.
 - The parquet artifacts (`event_forecasts`, `snapshot_forecasts`, `explanations`,
   `holdout_forecasts`, `evaluation_labels`) are gitignored. The artifact readers in `service.py`
   need them, so run `predict` (and `train` for the holdout files) with the data in place before
-  demoing; the JSON artifacts and the model bundle are committed.
-- Final risk regression and the dashboard are out of scope for this repository state. The brief
-  asks for risk and miss distance against time to TCA, RTN position plots and a warnings view by
-  time-to-TCA window; `snapshot_forecasts.parquet` now carries the RTN coordinates for it.
+  demoing; the JSON artifacts and the model bundle are committed. The dashboard ships its own
+  copies under `satellite_dashboard/artifacts/`.
+- Final risk regression is out of scope for this repository state. The dashboard plots risk and
+  miss distance against time to TCA; `snapshot_forecasts.parquet` carries the RTN coordinates.
 
 ## Project structure
 
@@ -274,5 +291,5 @@ docs/forecast_schema.md  shared frame schema consumed by policy, evaluation and 
 tests/                pytest suites
 scripts/              make_results.py, check_baseline_sanity.py
 artifacts/            outputs of the documented commands
-app/                  dashboard (not built here)
+satellite_dashboard/  Streamlit analyst dashboard (own README, tests and artifact bundle)
 ```

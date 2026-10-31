@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# local analyst data and uploads never go into version control
+data/local/*
+!data/local/.gitkeep
+data/uploads/
+*.sqlite
+*.sqlite3

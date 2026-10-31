@@ -1,0 +1,38 @@
+{
+  "schema_version": "dashboard-1.0",
+  "synthetic": true,
+  "model": {
+    "model_version": "synthetic-fixture-1",
+    "kind": "synthetic",
+    "use_past_risk": true
+  },
+  "eligibility": {
+    "min_time_to_tca_days": 2.0,
+    "rule": "time_to_tca >= 2 days"
+  },
+  "tier_rules": {},
+  "split": {
+    "method": "synthetic fixtures - no split"
+  },
+  "capabilities": {
+    "class_probabilities": true,
+    "class_probabilities_note": "Synthetic values, not model output.",
+    "feature_contributions": false,
+    "feature_contributions_note": "Not provided by the synthetic fixtures.",
+    "reason_codes": true,
+    "review_recommendation": true,
+    "snapshot_history": true,
+    "uncertainty_intervals": false,
+    "prediction_sets": false,
+    "single_cdm_inference": false
+  },
+  "datasets": {
+    "synthetic": {
+      "label": "Synthetic demo data",
+      "dataset_id": "synthetic",
+      "has_outcomes": true,
+      "n_events": 11,
+      "note": "Hand-made fixtures covering Critical, Elevated, Safe, invalid-input and insufficient-data cases."
+    }
+  }
+}
